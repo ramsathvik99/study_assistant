@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "name": "ram",
+      "email": "ramsathvik2005@gmail.com",
+      "passwordHash": "$2a$12$GOug9ZA0EdcK1cAVefnyQOQszEOMYn1z.MtgXHkeOMywtsnMoNmZO",
+      "id": "user_1784916286625_zj8rk7m",
+      "createdAt": 1784916286625
+    },
+    {
+      "name": "Test User",
+      "email": "testuser@example.com",
+      "passwordHash": "$2a$12$QHTV5AM.kTutU/4dp7fw5.zjpZzHEocxNKHahfaFEksk53ixtEkOG",
+      "id": "user_1784921120489_7ifibev",
+      "createdAt": 1784921120490
+    }
+  ]
+}
