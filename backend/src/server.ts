@@ -11,16 +11,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend Vite development server
-const allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
+// Enable CORS — allow localhost in dev, and any configured production origin
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  process.env.FRONTEND_URL,          // e.g. https://mosaic-study.vercel.app
+].filter(Boolean) as string[];
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS policy"));
-      }
+      // Allow server-to-server / Postman requests (no origin)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS policy"));
     },
     credentials: true,
   })
