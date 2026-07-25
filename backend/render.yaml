@@ -1,15 +1,15 @@
 services:
   - type: web
-    name: mosaic-backend
+    name: study-assistant-backend
     runtime: node
     rootDir: .
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: GROQ_API_KEY
-        sync: false        # Set this manually in Render dashboard (never commit secrets)
+        sync: false        # Set manually in Render Dashboard → Environment
       - key: FRONTEND_URL
-        sync: false        # Set to your Vercel URL after deploying the frontend
-    healthCheckPath: /health
+        value: https://study-assistant-468n-murex.vercel.app

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "../common/Button.js";
-import { getPercentWidthClass } from "../../utils/styleHelper.js";
 import { Flashcard } from "../../types/index.js";
 import { downloadFlashcardsTxt } from "../../utils/pdfGenerator.js";
 import {

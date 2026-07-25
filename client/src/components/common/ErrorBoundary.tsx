@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { AlertOctagon, RotateCcw } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./Button.js";
 
 interface Props {
@@ -25,34 +25,43 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
+    // Auto-reset when the route changes (resetKey = location.pathname)
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({ hasError: false, error: null });
     }
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
-  };
+  handleReset = () => this.setState({ hasError: false, error: null });
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="min-h-[60vh] flex items-center justify-center px-4">
-          <div className="text-center space-y-6 max-w-md animate-scale-reveal">
-            <div className="mx-auto inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-danger-50 dark:bg-danger-950/40 border border-danger-200 dark:border-danger-800">
-              <AlertOctagon className="h-8 w-8 text-danger-500" />
+        <div className="min-h-[60dvh] flex items-center justify-center px-4">
+          <div className="flex flex-col items-center gap-5 text-center max-w-sm">
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
+              <AlertTriangle className="w-7 h-7 text-rose-400" />
             </div>
-            <div className="space-y-2">
-              <h2 className="font-display text-2xl text-surface-900 dark:text-surface-50">
+
+            {/* Message */}
+            <div className="space-y-1.5">
+              <h2 className="font-display text-xl font-bold text-void-100">
                 Something went wrong
               </h2>
-              <p className="text-sm text-surface-500 dark:text-surface-400 leading-relaxed">
+              <p className="text-sm text-void-400 leading-relaxed">
                 {this.state.error?.message ?? "An unexpected error occurred in this section."}
               </p>
             </div>
-            <Button variant="primary" onClick={this.handleReset} icon={<RotateCcw className="h-4 w-4" />}>
+
+            {/* Retry */}
+            <Button
+              variant="amber"
+              size="md"
+              icon={<RotateCcw className="w-4 h-4" />}
+              onClick={this.handleReset}
+            >
               Try again
             </Button>
           </div>

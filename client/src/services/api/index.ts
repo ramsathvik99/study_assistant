@@ -1,16 +1,16 @@
 /**
- * Public API surface for the services/api layer.
+ * Public re-exports for the services/api layer.
  *
- * ARCHITECTURE RULE:
- * - Only service modules (authApi, studyApi, uploadApi) are exported here.
- * - `apiClient` (the raw Axios instance) is intentionally NOT exported.
- *   Components must NEVER import apiClient. Only hooks and services may use it.
- * - Hooks import from here or from individual service files.
- * - Components import from hooks only.
+ * ARCHITECTURE CONTRACT:
+ *   Components → Hooks → (this layer) → apiClient
+ *
+ * - Components NEVER import apiClient directly.
+ * - Hooks NEVER call fetch/axios directly; they use these services.
+ * - apiClient is NOT re-exported here intentionally.
  */
 
-// authApi is not implemented — stale export removed
-export { studyApi } from "./studyApi.js";
+export { studyApi }                    from "./studyApi.js";
+export type { GenerateResponse }       from "./studyApi.js";
 
-export { uploadApi } from "./uploadApi.js";
-export type { ParsedFileResult } from "./uploadApi.js";
+export { uploadApi }                   from "./uploadApi.js";
+export type { ParsedFileResult }       from "./uploadApi.js";

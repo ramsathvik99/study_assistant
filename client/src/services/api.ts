@@ -1,178 +1,77 @@
-import axios, { AxiosError, CancelTokenSource } from "axios";
-import { StudyPlan } from "../types/index.js";
-import { validateStudyPlan } from "../utils/jsonValidator.js";
+/**
+ * api.ts — Axios client singleton.
+ *
+ * This is the ONLY file that constructs the Axios instance.
+ * The base URL is driven entirely by the VITE_API_BASE_URL environment variable:
+ *
+ *   • Local dev  → create client/.env.local with:
+ *                    VITE_API_BASE_URL=http://localhost:5000/api
+ *   • Production → set VITE_API_BASE_URL in Vercel project environment variables:
+ *                    VITE_API_BASE_URL=https://study-assistant-mg5l.onrender.com/api
+ *
+ * VITE_API_BASE_URL must be set - the app will not work without it.
+ */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
+import axios, { AxiosError } from "axios";
 
-// Create configured Axios instance
-// Note: No authentication headers added - guest access enabled
+// ─── Base URL ─────────────────────────────────────────────────────────────────
+
+const rawBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+
+if (!rawBase) {
+  throw new Error(
+    "VITE_API_BASE_URL is not set. " +
+    "For local dev, create client/.env.local with VITE_API_BASE_URL=http://localhost:5000/api. " +
+    "For production, set VITE_API_BASE_URL in Vercel environment variables."
+  );
+}
+
+// Strip any accidental trailing slash so paths appended by Axios are clean.
+const API_BASE_URL = rawBase.replace(/\/+$/, "");
+
+// Confirm the resolved URL at startup (visible in the browser console).
+console.info(`[api] Base URL → ${API_BASE_URL}`);
+
+// ─── Axios instance ───────────────────────────────────────────────────────────
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60_000,
+  timeout: 90_000,        // 90 s — Groq cold-starts can be slow on free tier
+  headers: { "Content-Type": "application/json" },
+  withCredentials: false, // No cookies needed; guest-only access
 });
 
-// Active request cancel token tracker — only one AI request at a time
-let activeCancelSource: CancelTokenSource | null = null;
+// ─── Response interceptor ─────────────────────────────────────────────────────
+//
+// Normalises error shape so every caller gets a consistent `error.message`
+// regardless of whether the failure is a network error, timeout, or HTTP error.
 
-export interface GenerateOptions {
-  topic: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-}
-
-export class ApiError extends Error {
-  public status?: number;
-  public isRetryable: boolean;
-
-  constructor(message: string, status?: number, isRetryable = true) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.isRetryable = isRetryable;
-  }
-}
-
-/**
- * Cancel any in-flight request.
- */
-export function cancelActiveRequest(): void {
-  if (activeCancelSource) {
-    activeCancelSource.cancel("__CANCELLED__");
-    activeCancelSource = null;
-  }
-}
-
-/**
- * Fetch a structured study plan from the backend AI service via Axios.
- */
-export async function fetchStudyPlan(options: GenerateOptions): Promise<StudyPlan> {
-  const { topic, difficulty } = options;
-
-  // 1. Offline check
-  if (!navigator.onLine) {
-    throw new ApiError(
-      "No internet connection detected. Please check your network and try again.",
-      0,
-      true
-    );
-  }
-
-  // 2. Cancel any previous stale request
-  cancelActiveRequest();
-
-  // 3. Create fresh cancel source for this request
-  const cancelSource = axios.CancelToken.source();
-  activeCancelSource = cancelSource;
-
-  try {
-    const response = await apiClient.post(
-      "/generate",
-      { topic, difficulty },
-      { cancelToken: cancelSource.token }
-    );
-
-    const result = response.data;
-
-    if (!result.success || !result.data) {
-      throw new ApiError("AI returned an unexpected response structure.", 502, true);
-    }
-
-    // 4. Client-side schema validation (never trust AI output)
-    return validateStudyPlan(result.data);
-  } catch (error: any) {
-    if (axios.isCancel(error)) {
-      if (error.message === "__CANCELLED__") {
-        throw new ApiError("__CANCELLED__", 0, false);
+apiClient.interceptors.response.use(
+  (res) => res,
+  (error: AxiosError<{ error?: { message?: string }; message?: string }>) => {
+    // Network / timeout — no response object
+    if (!error.response) {
+      if (error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout")) {
+        error.message =
+          "The request timed out. The AI service may be starting up — please try again.";
+      } else {
+        error.message =
+          "Cannot reach the backend server. Check your connection or try again shortly.";
       }
-      throw new ApiError(
-        "Request timed out. Try a shorter topic or check your connection.",
-        408,
-        true
-      );
+      return Promise.reject(error);
     }
 
-    if (error instanceof ApiError) throw error;
+    // HTTP error — lift the server's message onto error.message for easy access
+    const serverMsg =
+      error.response.data?.error?.message ??
+      (error.response.data as any)?.message;
 
-    if (error.code === "ECONNABORTED") {
-      throw new ApiError(
-        "Request timed out after 60 seconds. Try again or check your connection.",
-        408,
-        true
-      );
+    if (serverMsg && typeof serverMsg === "string") {
+      error.message = serverMsg;
     }
 
-    // Axios Error mapping
-    const axiosErr = error as AxiosError<any>;
-    if (axiosErr.response) {
-      const status = axiosErr.response.status;
-      const data = axiosErr.response.data;
-      const msg = data?.error?.message ?? `Request failed (HTTP ${status})`;
-
-      if (status === 429) {
-        throw new ApiError(
-          "You're generating too quickly. Please wait a moment before trying again.",
-          429,
-          true
-        );
-      }
-      if (status === 503) {
-        throw new ApiError(
-          "The AI service is temporarily unavailable. Please try again shortly.",
-          503,
-          true
-        );
-      }
-      throw new ApiError(msg, status, status >= 500);
-    }
-
-    throw new ApiError(
-      "Cannot reach the backend server. Make sure it is running on port 5000.",
-      0,
-      true
-    );
-  } finally {
-    if (activeCancelSource === cancelSource) {
-      activeCancelSource = null;
-    }
+    return Promise.reject(error);
   }
-}
+);
 
-/**
- * Upload a document (PDF or TXT) to parse it via Axios.
- */
-export async function uploadFileToServer(file: File): Promise<{
-  text: string;
-  wordCount: number;
-  charCount: number;
-  fileName: string;
-  fileType: string;
-  wasTruncated: boolean;
-}> {
-  if (!navigator.onLine) {
-    throw new ApiError(
-      "No internet connection detected. Please check your network and try again.",
-      0,
-      true
-    );
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    const response = await apiClient.post("/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    const result = response.data;
-    return result.data;
-  } catch (error: any) {
-    const axiosErr = error as AxiosError<any>;
-    if (axiosErr.response) {
-      const status = axiosErr.response.status;
-      const data = axiosErr.response.data;
-      const msg = data?.error?.message ?? `Upload failed (HTTP ${status})`;
-      throw new ApiError(msg, status, status >= 500);
-    }
-    throw new ApiError("Cannot reach the backend server.", 0, true);
-  }
-}
+export default apiClient;

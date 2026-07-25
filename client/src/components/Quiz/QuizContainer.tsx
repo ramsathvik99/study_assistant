@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "../common/Button.js";
-import { getPercentWidthClass } from "../../utils/styleHelper.js";
 import { QuizQuestion } from "../../types/index.js";
 import { downloadQuizTxt } from "../../utils/pdfGenerator.js";
 import { fireQuizCompleteConfetti, firePerfectScoreConfetti } from "../common/Confetti.js";

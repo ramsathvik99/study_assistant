@@ -1,84 +1,76 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import studyRoutes from "./routes/study.js";
-import authRoutes from "./routes/auth.js";
+import studyRoutes  from "./routes/study.js";
+import authRoutes   from "./routes/auth.js";
 import uploadRoutes from "./routes/upload.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+const app  = express();
+const PORT = process.env.PORT ?? 5000;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 //
-// Normalise a URL for comparison: lowercase, strip trailing slash.
+// Rules:
+//  1. Localhost origins (development) are always allowed.
+//  2. Any origin listed in FRONTEND_URL (comma-separated) is allowed.
+//  3. Any *.vercel.app subdomain is allowed (covers Vercel preview deploys).
+//  4. Requests with no Origin header (server-to-server, curl, Postman) are allowed.
+//
+// NEVER use app.use(cors()) without an origin check — that opens the API to
+// every website on the internet.
+
+/** Lowercase + strip trailing slash for safe comparison. */
 const normalise = (url: string) => url.toLowerCase().replace(/\/+$/, "");
 
-// Static origins that are always allowed
 const STATIC_ORIGINS: string[] = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://localhost:4173",  // vite preview
   "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
 ];
 
-// Production frontend URL injected via Render environment variable.
-// Supports multiple comma-separated values, e.g.:
-//   FRONTEND_URL=https://study-assistant-468n-murex.vercel.app,https://study-assistant.vercel.app
+// Production frontend URL(s) from environment — supports comma-separated list.
+// Example: FRONTEND_URL=https://study-assistant-468n-murex.vercel.app
 const envOrigins: string[] = (process.env.FRONTEND_URL ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const ALLOWED_ORIGINS: string[] = [
-  ...STATIC_ORIGINS,
-  ...envOrigins,
-].map(normalise);
+// Build the final static allow-list (normalised for comparison).
+const ALLOWED_ORIGINS: string[] = [...STATIC_ORIGINS, ...envOrigins].map(normalise);
 
-// Regex patterns for wildcard matches (Vercel preview deployments)
-// Matches any subdomain of vercel.app, e.g. study-assistant-abc123-ramsathvik99.vercel.app
-const ALLOWED_PATTERNS: RegExp[] = [
-  /^https:\/\/study-assistant(-[a-z0-9]+)*(-murex|-ramsathvik99)?\.vercel\.app$/i,
-  /^https:\/\/[a-z0-9-]+-ramsathvik99\.vercel\.app$/i,
-  /^https:\/\/study-assistant-468n-murex\.vercel\.app$/i,
-];
+// Dynamic patterns — covers all *.vercel.app preview deployments.
+const VERCEL_PATTERN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
 
-// Log at startup so Render logs confirm the value was read correctly
 console.log("[CORS] Allowed static origins:", ALLOWED_ORIGINS);
 console.log("[CORS] FRONTEND_URL env value:", process.env.FRONTEND_URL ?? "(not set)");
 
 function isOriginAllowed(origin: string): boolean {
   const norm = normalise(origin);
-
-  // Exact match in allow-list
-  if (ALLOWED_ORIGINS.includes(norm)) return true;
-
-  // Pattern match for Vercel preview deployments
-  if (ALLOWED_PATTERNS.some((re) => re.test(origin))) return true;
-
-  return false;
+  return ALLOWED_ORIGINS.includes(norm) || VERCEL_PATTERN.test(origin);
 }
 
 app.use(
   cors({
     origin(origin, callback) {
-      // No origin = server-to-server / curl / Postman — always allow
+      // No Origin header → server-to-server, curl, Postman → allow
       if (!origin) return callback(null, true);
-
-      // Debug log — visible in Render logs to diagnose mismatches
-      console.log(`[CORS] Incoming origin : "${origin}"`);
-      console.log(`[CORS] Allowed origins : ${JSON.stringify(ALLOWED_ORIGINS)}`);
 
       if (isOriginAllowed(origin)) {
         console.log(`[CORS] ✓ Allowed: ${origin}`);
         return callback(null, true);
       }
 
-      console.warn(`[CORS] ✗ Blocked: "${origin}" not in allow-list`);
-      callback(new Error(`CORS: origin "${origin}" is not allowed`));
+      console.warn(`[CORS] ✗ Blocked: "${origin}"`);
+      callback(new Error(`CORS: origin "${origin}" is not allowed.`));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -93,9 +85,11 @@ app.use("/api",        studyRoutes);
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
   res.status(200).json({
-    status: "ok",
-    timestamp: new Date(),
-    allowedOrigins: ALLOWED_ORIGINS,          // handy for debugging
+    status:         "ok",
+    timestamp:      new Date().toISOString(),
+    env:            process.env.NODE_ENV ?? "development",
+    allowedOrigins: ALLOWED_ORIGINS,
+    groqConfigured: !!process.env.GROQ_API_KEY,
   });
 });
 
@@ -114,4 +108,10 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`[Server] Running on port ${PORT}`);
   console.log(`[Server] NODE_ENV: ${process.env.NODE_ENV ?? "development"}`);
+  if (!process.env.GROQ_API_KEY) {
+    console.warn("[Server] WARNING: GROQ_API_KEY is not set — all AI calls will fail.");
+  }
+  if (!process.env.FRONTEND_URL) {
+    console.warn("[Server] WARNING: FRONTEND_URL is not set — only localhost origins are allowed.");
+  }
 });

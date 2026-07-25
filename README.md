@@ -1,89 +1,263 @@
-# AI Study Assistant (Phase 1 Complete)
+# Mosaic — AI Study Platform
 
-An enterprise-scale, production-quality study platform that converts any topic, notes, or uploaded documents into an interactive, structured learning experience. 
+Turn any topic, notes, or document into a complete study system in seconds.
+Mosaic uses the Groq API (Llama 3.3 70B) to generate flashcards, quizzes, roadmaps, mnemonics, and revision tips from any study material.
 
-Instead of showing conversational raw chat outputs, the AI generates strictly validated JSON study materials which the frontend parses into premium UI tabs: collapsible Summaries with Text-to-Speech, Key Concept cards, 3D Flipping Flashcards, Quizzes with timers and performance history tracking, and Study Roadmap timelines.
-
----
-
-## 🛠️ Phase 1 Features Implemented
-
-1. **Authentication**: JWT-based secure session management (bcrypt password hashing, file-based user store).
-2. **Dashboard**: Live analytics of topics studied, flashcards completed, average quiz scores, active study streaks, and unlockable achievements.
-3. **Paste Notes & File Upload**: Drag-and-drop file uploader supporting `.pdf`, `.txt`, and `.md` formats (max 15MB) with automated text parsing and context optimization.
-4. **Groq Integration**: Powered by Groq's high-speed `llama-3.3-70b-versatile` engine with Zod schema validation.
-5. **Study Planner**: Add, edit, prioritize, and monitor custom study goals, hourly commitments, and target deadlines.
-6. **Error Handling**: Complete client-side and backend recovery covering offline states, rate limiting (HTTP 429), timeouts, and validation failures.
-7. **Responsive & Dark Mode**: Modern layout that scales down to mobile bottom bars and supports seamless dark/light modes.
+**Live demo:**
+- Frontend → https://study-assistant-468n-murex.vercel.app
+- Backend API → https://study-assistant-mg5l.onrender.com/health
 
 ---
 
-## 🗄️ Technical Architecture & Directory Structure
+## Stack
 
-```
-study_assistant/
-├── backend/
-│   ├── data/                 # JSON file-based database for users/metadata
-│   ├── src/
-│   │   ├── controllers/      # Auth, Study, and File Upload controllers
-│   │   ├── middleware/       # JWT Auth verification & custom rate limiters
-│   │   ├── routes/           # REST endpoints (/api/auth, /api/upload, /api/generate)
-│   │   ├── services/         # Groq SDK handler with Zod enforcement
-│   │   ├── utils/            # User file storage wrapper
-│   │   └── validators/       # Zod schemas for request parameters
-│   └── package.json
-└── client/
-    ├── src/
-    │   ├── components/       # Component library (Summary, Cards, Quiz, Nav)
-    │   ├── contexts/         # Global state managers (Auth, App Settings)
-    │   ├── features/         # Upload and Study Planner modules
-    │   ├── pages/            # View pages (Home, Login, Register, Planner, Dashboard)
-    │   └── services/         # API HTTP Client with AbortController
-```
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Framer Motion |
+| Backend | Node.js, Express, TypeScript |
+| AI | Groq SDK — Llama 3.3 70B Versatile |
+| Deployment | Vercel (frontend) · Render (backend) |
 
 ---
 
-## 🚀 Getting Started
+## Local Development
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm (v9 or higher)
-- A Groq API Key. You can get one from the [Groq Console](https://console.groq.com/).
 
-### Installation
+- Node.js 20+
+- A [Groq API key](https://console.groq.com/keys) (free tier available)
 
-1. Clone or copy the project workspace.
-2. Install dependencies for both frontend and backend concurrently:
-   ```bash
-   npm run install-all
-   ```
+### 1 — Clone
 
-### Configuration
-
-Create a `.env` file in the `backend/` directory:
-```env
-PORT=5000
-GROQ_API_KEY=gsk_your_actual_groq_api_key_here
-JWT_SECRET=use_a_strong_random_secret_phrase
-JWT_EXPIRES_IN=7d
+```bash
+git clone https://github.com/your-username/study-assistant.git
+cd study-assistant
 ```
 
-### Running Locally
+### 2 — Backend setup
 
-To run both the Vite frontend and Express backend concurrently:
 ```bash
+cd backend
+cp .env.example .env
+```
+
+Open `backend/.env` and fill in:
+
+```env
+PORT=5000
+GROQ_API_KEY=gsk_your_key_here
+FRONTEND_URL=http://localhost:5173
+```
+
+Install and start:
+
+```bash
+npm install
 npm run dev
 ```
 
-The application will launch:
-- **Frontend client**: [http://localhost:5173](http://localhost:5173)
-- **Backend server**: [http://localhost:5000](http://localhost:5000)
+The backend starts on **http://localhost:5000**.
+Verify it's healthy: http://localhost:5000/health
+
+### 3 — Frontend setup
+
+```bash
+cd ../client
+cp .env.example .env.local
+```
+
+`client/.env.local` MUST contain the backend URL:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+**Important:** `VITE_API_BASE_URL` is required. The app will not work without it.
+
+Install and start:
+
+```bash
+npm install
+npm run dev
+```
+
+The frontend starts on **http://localhost:5173**.
 
 ---
 
-## 💡 Robust Engineering Details
+## Production Deployment
 
-1. **AI Output Safety & Zod Guards**: All incoming data from the Groq SDK is run through a strict Zod parser. If the JSON is missing arrays or subfields, the backend falls back gracefully or reports an API validation error.
-2. **Double Submission Prevention**: In-flight generation blocks UI interactions, and starting a new request automatically aborts any existing network requests via `AbortController` to avoid race conditions.
-3. **User-Scoped Local Storage**: Local storage states (active study session, bookmarks, history, goals) are keyed by the active user's ID (`study-history-${user.id}`), keeping multiple account sessions isolated.
-4. **JWT Security**: Login incorporates a constant-time hashing comparison using a dummy value when the target user doesn't exist, preventing timing side-channel attacks for username enumeration.
+### Backend → Render
+
+1. Create a new **Web Service** on [Render](https://render.com).
+2. Connect your GitHub repository.
+3. Set **Root Directory** to `backend`.
+4. Render auto-detects the `render.yaml` — build and start commands are pre-configured.
+5. In **Environment → Environment Variables**, add:
+
+| Key | Value |
+|---|---|
+| `GROQ_API_KEY` | your Groq API key |
+| `FRONTEND_URL` | `https://study-assistant-468n-murex.vercel.app` |
+| `NODE_ENV` | `production` |
+
+> `PORT` is injected automatically by Render — do not set it manually.
+
+6. Deploy. The health endpoint will be at `https://<your-render-url>/health`.
+
+### Frontend → Vercel
+
+1. Import the repository on [Vercel](https://vercel.com).
+2. Set **Root Directory** to `client`.
+3. Framework preset: **Vite** (auto-detected).
+4. In **Settings → Environment Variables**, add:
+
+| Key | Value |
+|---|---|
+| `VITE_API_BASE_URL` | `https://study-assistant-mg5l.onrender.com/api` |
+
+5. Deploy. Vercel reads `client/vercel.json` to handle SPA routing — all routes rewrite to `index.html` so direct URL access works correctly.
+
+---
+
+## Environment Variables Reference
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `GROQ_API_KEY` | ✅ | Groq API key for AI generation |
+| `FRONTEND_URL` | ✅ | Comma-separated list of allowed frontend origins |
+| `PORT` | auto | Injected by Render in production; defaults to 5000 locally |
+| `NODE_ENV` | recommended | Set to `production` on Render |
+
+### Frontend (`client/.env.local`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_BASE_URL` | ✅ | Full backend API base URL including `/api` suffix |
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check — returns status and CORS config |
+| `POST` | `/api/generate` | Generate a complete study plan from topic/notes |
+| `POST` | `/api/upload` | Parse a PDF, TXT, or MD file into plain text |
+
+### POST `/api/generate`
+
+**Request body:**
+```json
+{
+  "topic": "your study material or topic name",
+  "difficulty": "Easy | Medium | Hard"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "title": "...",
+    "summary": "...",
+    "difficulty": "Medium",
+    "estimatedStudyTime": "2 hours",
+    "keyConcepts": [...],
+    "flashcards": [...],
+    "quiz": [...],
+    "roadmap": [...],
+    "revisionTips": [...],
+    "mnemonics": [...]
+  }
+}
+```
+
+### POST `/api/upload`
+
+**Request:** `multipart/form-data` with field `file` (PDF / TXT / MD, max 15 MB).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "text": "extracted plain text...",
+    "wordCount": 1234,
+    "charCount": 7890,
+    "fileType": "pdf",
+    "fileName": "notes.pdf",
+    "wasTruncated": false
+  }
+}
+```
+
+---
+
+## Project Structure
+
+```
+study-assistant/
+├── backend/                  Express + TypeScript API
+│   ├── src/
+│   │   ├── controllers/      Request handlers
+│   │   ├── middleware/       CORS, error handling, rate limiting
+│   │   ├── routes/           Route definitions
+│   │   ├── services/         Groq AI integration
+│   │   ├── utils/            File store utility
+│   │   └── validators/       Zod request validation
+│   ├── .env.example
+│   ├── render.yaml           Render deployment config
+│   └── tsconfig.json
+│
+└── client/                   React + Vite frontend
+    ├── src/
+    │   ├── components/       UI components
+    │   ├── features/         Feature modules (file upload)
+    │   ├── hooks/            Custom React hooks
+    │   ├── pages/            Route-level page components
+    │   ├── services/         API client layer (Axios)
+    │   ├── types/            TypeScript interfaces
+    │   └── utils/            Helpers (validation, PDF, TTS)
+    ├── .env.example
+    ├── vercel.json           Vercel SPA routing config
+    └── vite.config.ts
+```
+
+---
+
+## Build Verification
+
+Both projects build with zero TypeScript errors:
+
+```bash
+# Backend
+cd backend && npm run build   # tsc — compiles to dist/
+
+# Frontend
+cd client && npm run build    # tsc -b && vite build — outputs to dist/
+```
+
+---
+
+## CORS Configuration
+
+The backend allows requests from:
+
+- `http://localhost:5173` (Vite dev server)
+- `http://localhost:3000` (alternative local port)
+- `http://localhost:4173` (Vite preview)
+- Any origin matching `*.vercel.app` (covers all Vercel preview deployments)
+- Any origin listed in the `FRONTEND_URL` environment variable
+
+---
+
+## Known Limitations
+
+- **Render free tier cold starts** — the backend may take 30–60 seconds to respond after a period of inactivity. The frontend has a 90-second request timeout to accommodate this.
+- **Rate limiting** — the `/api/generate` endpoint is limited to 20 requests per IP per hour to protect Groq API quota.
+- **File uploads** — files are processed in memory and not persisted. Maximum size is 15 MB.
+- **No authentication** — the application is guest-only. All data is stored in the browser's `localStorage`.

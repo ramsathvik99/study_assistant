@@ -1,13 +1,15 @@
 // ─── App Constants ────────────────────────────────────────────────────────────
 
 export const APP_NAME = "AI Study Assistant";
-export const APP_VERSION = "1.0.0";
-export const APP_DESCRIPTION = "Production-scale AI-powered learning platform";
+export const APP_VERSION = "2.0.0";
+export const APP_DESCRIPTION = "AI-powered study platform — flashcards, quizzes, roadmaps";
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
-export const API_TIMEOUT_MS = 60_000; // 60s — Groq can be slow on large inputs
+// Kept for reference only. The canonical base URL lives in services/api.ts.
+// Use VITE_API_BASE_URL (not VITE_API_URL) in your .env files.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_TIMEOUT_MS = 90_000; // 90s — Groq cold-starts can be slow
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
 
@@ -27,20 +29,16 @@ export const DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard"] as const;
 // ─── LocalStorage Keys ────────────────────────────────────────────────────────
 
 export const LS_KEYS = {
-  history: (userId: string) => `study-history-${userId}`,
-  activeSession: (userId: string) => `study-active-session-${userId}`,
-  stats: (userId: string) => `study-stats-${userId}`,
-  settings: "study-settings",
-  token: "auth-token",
-  user: "auth-user",
+  history:       "study-history",
+  activeSession: "study-active-session",
+  stats:         "study-stats",
+  settings:      "study-settings",
 } as const;
 
 // ─── TanStack Query ───────────────────────────────────────────────────────────
 
 export const QUERY_KEYS = {
   studyPlan: "study-plan",
-  history: "history",
+  history:   "history",
   dashboard: "dashboard",
-  goals: "goals",
-  user: "user",
 } as const;
