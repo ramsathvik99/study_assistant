@@ -1,200 +1,285 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Zap, LayoutDashboard, BookOpen, History, Settings,
-  X, Menu, Flame, ChevronRight, Sparkles
+  Home,
+  BookOpen,
+  BarChart3,
+  Clock,
+  Menu,
+  X,
+  Flame,
+  Sparkles,
+  Moon,
+  Sun,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "../../hooks/useTranslation";
+import { useSettings } from "../../hooks/useSettings";
 
 interface NavigationProps {
   hasActiveSession: boolean;
   streak: number;
+  displayName?: string;
 }
 
-const NAV_ITEMS = (hasActiveSession: boolean) => [
-  { path: "/",         label: "Generate",  icon: Zap,            end: true },
-  ...(hasActiveSession
-    ? [{ path: "/session", label: "Study Room", icon: BookOpen, end: false }]
-    : []
-  ),
-  { path: "/dashboard", label: "Progress",  icon: LayoutDashboard, end: false },
-  { path: "/history",   label: "Library",   icon: History,         end: false },
-  { path: "/settings",  label: "Settings",  icon: Settings,        end: false },
-];
-
-/* ── Sidebar link ─────────────────────────────────────────────────────────── */
-const NavLink: React.FC<{
-  path: string; label: string; icon: React.ElementType;
-  active: boolean; onClick?: () => void;
-}> = ({ path, label, icon: Icon, active, onClick }) => (
-  <Link
-    to={path}
-    onClick={onClick}
-    className={[
-      "group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium",
-      "transition-all duration-150 focus-ring",
-      active
-        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-        : "text-void-400 hover:text-void-100 hover:bg-white/5 border border-transparent",
-    ].join(" ")}
-  >
-    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-amber-400" : "text-void-500 group-hover:text-void-300"}`} />
-    <span className="flex-1">{label}</span>
-    {active && <ChevronRight className="w-3 h-3 text-amber-500/60" />}
-  </Link>
-);
-
-/* ── Sidebar inner content ───────────────────────────────────────────────── */
-const SidebarContent: React.FC<{ hasActiveSession: boolean; streak: number; onNav?: () => void }> = ({
-  hasActiveSession, streak, onNav
-}) => {
+export const Navigation: React.FC<NavigationProps> = ({ hasActiveSession, streak, displayName = "Student" }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const items = NAV_ITEMS(hasActiveSession);
+  const t = useTranslation();
+  const { settings, updateSettings } = useSettings();
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-4 py-5 mb-2">
-        <Link to="/" onClick={onNav} className="flex items-center gap-2.5 focus-ring rounded-lg">
-          <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shadow-glow-amber shrink-0">
-            <Sparkles className="w-4 h-4 text-void-950" />
-          </div>
-          <div className="leading-none">
-            <p className="font-display font-bold text-void-50 text-sm tracking-tight">Mosaic</p>
-            <p className="label mt-0.5">Study OS</p>
-          </div>
-        </Link>
-      </div>
+  const handleThemeToggle = () => {
+    const newMode = settings.darkMode ? false : true;
+    updateSettings({ darkMode: newMode });
+  };
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5">
-        <p className="label px-3 mb-2">Navigation</p>
-        {items.map(({ path, label, icon }) => (
-          <NavLink
-            key={path}
-            path={path}
-            label={label}
-            icon={icon}
-            active={location.pathname === path}
-            onClick={onNav}
-          />
-        ))}
-      </nav>
+  const navItems = [
+    { path: "/", label: t.nav.home, icon: Home },
+    ...(hasActiveSession ? [{ path: "/session", label: t.nav.session, icon: BookOpen }] : []),
+    { path: "/dashboard", label: t.nav.dashboard, icon: BarChart3 },
+    { path: "/history", label: t.nav.history, icon: Clock },
+  ];
 
-      {/* Streak card */}
-      <div className="mx-3 mb-4 mt-3 rounded-xl border border-[rgba(255,255,255,0.07)] bg-void-900/60 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="label">Learning streak</p>
-          <Flame className="w-3.5 h-3.5 text-fire-400" />
-        </div>
-        <div className="flex items-end gap-2">
-          <span className="font-display text-3xl font-bold text-void-50 leading-none">{streak}</span>
-          <span className="text-xs text-void-500 mb-0.5">days</span>
-        </div>
-        <div className="mt-2.5 flex gap-0.5">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div
-              key={i}
-              className={`flex-1 h-1 rounded-full ${i < Math.min(streak, 7) ? "bg-amber-500" : "bg-void-700"}`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ── Main component ──────────────────────────────────────────────────────── */
-export const Navigation: React.FC<NavigationProps> = ({ hasActiveSession, streak }) => {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const isActive = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <>
-      {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden xl:flex xl:flex-col w-56 border-r border-[rgba(255,255,255,0.06)] bg-void-950/90 backdrop-blur-xl">
-        <SidebarContent hasActiveSession={hasActiveSession} streak={streak} />
-      </aside>
-
-      {/* ── Top bar (shown on all sizes; right-side on desktop) ─────────── */}
-      <header className="sticky top-0 z-30 xl:ml-56 glass border-b border-[rgba(255,255,255,0.06)]">
-        <div className="flex items-center justify-between h-12 px-4 max-w-screen-2xl mx-auto">
-          {/* Mobile hamburger + brand */}
-          <div className="flex items-center gap-3 xl:hidden">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-void-400 hover:text-void-100 hover:bg-white/5 transition focus-ring"
-              aria-label="Open navigation"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-amber-500 flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-void-950" />
+      {/* Desktop Navigation - Premium Design */}
+      <nav className="hidden lg:block fixed top-0 left-0 right-0 z-50">
+        {/* Subtle background with glassmorphism */}
+        <div className="absolute inset-0 backdrop-blur-md bg-white/40 dark:bg-slate-900/30 border-b border-white/30 dark:border-slate-700/20 shadow-sm" />
+        
+        <div className="relative max-w-7xl mx-auto px-8">
+          <div className="flex items-center justify-between h-16 gap-8">
+            {/* LEFT: Logo Section */}
+            <NavLink to="/" className="flex items-center gap-2.5 group shrink-0">
+              <motion.div
+                whileHover={{ y: -2 }}
+                className="w-9 h-9 bg-gradient-to-br from-primary-600 to-secondary-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow"
+              >
+                <Sparkles className="w-5 h-5 text-white" />
+              </motion.div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-base font-display font-black text-slate-900 dark:text-white">
+                  StudyFlow
+                </span>
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight">AI</span>
               </div>
-              <span className="font-display font-bold text-void-100 text-sm">Mosaic</span>
-            </div>
-          </div>
+            </NavLink>
 
-          {/* Right side status pill */}
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[rgba(255,255,255,0.07)] bg-void-900/60">
-              <span className="status-dot" />
-              <span className="text-[11px] font-medium text-void-400">AI ready</span>
+            {/* CENTER: Navigation Links */}
+            <div className="flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                return (
+                  <NavLink key={item.path} to={item.path} className="relative">
+                    <motion.div
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="relative px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                    >
+                      {/* Active indicator - sliding background */}
+                      {active && (
+                        <motion.div
+                          layoutId="navIndicator"
+                          className="absolute inset-0 bg-white/50 dark:bg-white/10 rounded-lg -z-10 backdrop-blur-sm"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                        />
+                      )}
+                      
+                      <div className={`w-4 h-4 flex items-center justify-center transition-colors ${
+                        active ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-400"
+                      }`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      
+                      <span className={`text-xs font-semibold transition-colors ${
+                        active 
+                          ? "text-slate-900 dark:text-white" 
+                          : "text-slate-600 dark:text-slate-400"
+                      }`}>
+                        {item.label}
+                      </span>
+
+                      {/* Glow effect on active */}
+                      {active && (
+                        <motion.div
+                          className="absolute -inset-2 bg-primary-500/5 rounded-lg -z-20 blur-md"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      )}
+                    </motion.div>
+                  </NavLink>
+                );
+              })}
+            </div>
+
+            {/* RIGHT: Streak & Theme */}
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
+              {/* Streak Widget */}
+              {streak > 0 && (
+                <motion.div
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  className="px-3 py-2 rounded-lg flex items-center gap-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/5 dark:to-orange-500/5 border border-amber-300/30 dark:border-orange-700/20 backdrop-blur-sm"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-4 h-4 flex items-center justify-center"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  </motion.div>
+                  <div className="flex flex-col gap-0">
+                    <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-tight leading-tight">Streak</span>
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200">{streak}d</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Theme Toggle */}
+              <motion.button
+                whileHover={{ scale: 1.05, rotate: 10 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleThemeToggle}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-white/10 transition-colors shadow-sm"
+                aria-label="Toggle theme"
+                title={settings.darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {settings.darkMode ? (
+                  <motion.div
+                    key="sun"
+                    initial={{ opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 90 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Sun className="w-4 h-4 text-amber-500" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="moon"
+                    initial={{ opacity: 0, rotate: 90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: -90 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Moon className="w-4 h-4 text-slate-600" />
+                  </motion.div>
+                )}
+              </motion.button>
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {/* ── Mobile drawer ──────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
+      {/* Mobile Navigation - Premium Compact */}
+      <nav className="lg:hidden fixed top-0 left-0 right-0 z-50">
+        <div className="absolute inset-0 backdrop-blur-md bg-white/40 dark:bg-slate-900/30 border-b border-white/30 dark:border-slate-700/20 shadow-sm" />
+        
+        <div className="relative flex items-center justify-between h-14 px-4">
+          {/* Logo */}
+          <NavLink to="/" className="flex items-center gap-2 group">
             <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 bg-void-950/70 backdrop-blur-sm xl:hidden"
-              onClick={() => setMobileOpen(false)}
-            />
-            <motion.aside
-              key="drawer"
-              initial={{ x: -240 }}
-              animate={{ x: 0 }}
-              exit={{ x: -240 }}
-              transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              className="fixed inset-y-0 left-0 z-[60] w-60 bg-void-950 border-r border-[rgba(255,255,255,0.08)] xl:hidden"
+              whileHover={{ y: -1 }}
+              className="w-8 h-8 bg-gradient-to-br from-primary-600 to-secondary-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow"
             >
-              {/* Close button */}
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-void-400 hover:text-void-100 focus-ring"
-                aria-label="Close navigation"
+              <Sparkles className="w-4 h-4 text-white" />
+            </motion.div>
+            <span className="text-sm font-display font-black text-slate-900 dark:text-white">
+              StudyFlow
+            </span>
+          </NavLink>
+
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
+            {streak > 0 && (
+              <motion.div
+                whileHover={{ y: -1 }}
+                className="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/5 dark:to-orange-500/5 border border-amber-300/30 dark:border-orange-700/20 backdrop-blur-sm"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <SidebarContent
-                hasActiveSession={hasActiveSession}
-                streak={streak}
-                onNav={() => setMobileOpen(false)}
-              />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+                <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">{streak}d</span>
+              </motion.div>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.05, rotate: 10 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleThemeToggle}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {settings.darkMode ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600" />
+              )}
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/40 dark:hover:bg-white/5 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              ) : (
+                <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              )}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="border-t border-white/30 dark:border-slate-700/20 backdrop-blur-md bg-white/40 dark:bg-slate-900/30"
+            >
+              <div className="px-4 py-3 space-y-1.5">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.path);
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <motion.div
+                        whileTap={{ scale: 0.98 }}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-white/50 dark:bg-white/10 text-slate-900 dark:text-white"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-white/30 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </motion.div>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      {/* Spacer */}
+      <div className="h-14 lg:h-16" />
     </>
   );
 };
-
-/* ── Footer ─────────────────────────────────────────────────────────────── */
-export const Footer: React.FC = () => (
-  <footer className="xl:ml-56 border-t border-[rgba(255,255,255,0.06)] mt-auto">
-    <div className="max-w-screen-2xl mx-auto px-6 py-4 flex items-center justify-between">
-      <span className="text-[11px] text-void-600 font-mono">Mosaic · v2.0</span>
-      <span className="text-[11px] text-void-600">Built for deliberate practice</span>
-    </div>
-  </footer>
-);
-
-export default Navigation;

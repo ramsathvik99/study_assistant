@@ -1,318 +1,388 @@
 import React, { useState, useEffect } from "react";
-import { Button } from "../common/Button.js";
-import { QuizQuestion } from "../../types/index.js";
-import { downloadQuizTxt } from "../../utils/pdfGenerator.js";
-import { fireQuizCompleteConfetti, firePerfectScoreConfetti } from "../common/Confetti.js";
-import {
-  HelpCircle, Clock, RotateCcw, CheckCircle2, XCircle,
-  Award, ArrowRight, Download, AlertTriangle, Lightbulb
-} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Check,
+  X,
+  Trophy,
+  Target,
+  Clock,
+  RotateCw,
+  ArrowRight,
+  Sparkles,
+  Award,
+} from "lucide-react";
+import { QuizQuestion } from "../../types/index";
+import { Card } from "../common/Card";
+import { Button } from "../common/Button";
+import { EmptyState } from "../animations/EmptyState";
+import confetti from "canvas-confetti";
 
 interface QuizContainerProps {
-  quiz: QuizQuestion[];
-  topicTitle: string;
-  onUpdateQuiz: (updated: QuizQuestion[]) => void;
-  animationsEnabled?: boolean;
+  questions: QuizQuestion[];
+  onUpdate: (questions: QuizQuestion[]) => void;
 }
 
-const OPTION_LETTERS = ["A", "B", "C", "D", "E"];
+export const QuizContainer: React.FC<QuizContainerProps> = ({ questions, onUpdate }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [startTime, setStartTime] = useState<number>(Date.now());
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
-export const QuizContainer: React.FC<QuizContainerProps> = ({
-  quiz,
-  topicTitle,
-  onUpdateQuiz,
-  animationsEnabled = true,
-}) => {
-  const [currentIdx,           setCurrentIdx]           = useState(0);
-  const [selectedOption,       setSelectedOption]       = useState<number | null>(null);
-  const [isSubmitted,          setIsSubmitted]          = useState(false);
-  const [timeLeft,             setTimeLeft]             = useState(30);
-  const [isQuizOver,           setIsQuizOver]           = useState(false);
-  const [retryMode,            setRetryMode]            = useState(false);
-  const [incorrectIndices,     setIncorrectIndices]     = useState<number[]>([]);
-  const [activeQuestionIndices, setActiveQuestionIndices] = useState<number[]>(
-    quiz.map((_, i) => i)
-  );
+  // Empty state check
+  if (!questions || questions.length === 0) {
+    return (
+      <EmptyState
+        type="session"
+        title="No quiz questions"
+        description="No quiz questions are available for this study plan. Try generating a new plan."
+      />
+    );
+  }
 
-  const activeQuestionIndex = activeQuestionIndices[currentIdx];
-  const question            = quiz[activeQuestionIndex];
+  const currentQuestion = questions[currentIndex];
+  const answeredQuestions = questions.filter((q) => q.userAnswerIndex !== null && q.userAnswerIndex !== undefined);
+  const correctAnswers = answeredQuestions.filter((q) => q.userAnswerIndex === q.answerIndex).length;
+  const score = answeredQuestions.length > 0 ? Math.round((correctAnswers / answeredQuestions.length) * 100) : 0;
 
-  // ── Reset on question change ──
   useEffect(() => {
-    if (!isQuizOver && question) {
-      setSelectedOption(question.userAnswerIndex !== undefined ? question.userAnswerIndex : null);
-      setIsSubmitted(question.userAnswerIndex !== null && question.userAnswerIndex !== undefined);
-      setTimeLeft(30);
+    if (!showResults) {
+      const timer = setInterval(() => {
+        setTimeElapsed(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+      return () => clearInterval(timer);
     }
-  }, [currentIdx, isQuizOver, question, activeQuestionIndex]);
+  }, [startTime, showResults]);
 
-  // ── Timer ──
-  useEffect(() => {
-    if (isQuizOver || isSubmitted || !question) return;
-    if (timeLeft === 0) { handleSubmit(true); return; }
-    const id = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearInterval(id);
-  }, [timeLeft, isSubmitted, isQuizOver, question]);
+  const handleAnswerSelect = (index: number) => {
+    if (hasAnswered) return;
+    setSelectedAnswer(index);
+  };
 
-  const handleSubmit = (forceTimeout = false) => {
-    if (isSubmitted) return;
-    const answer = forceTimeout ? -1 : selectedOption;
-    setIsSubmitted(true);
-    const updated = [...quiz];
-    updated[activeQuestionIndex] = { ...updated[activeQuestionIndex], userAnswerIndex: answer };
-    onUpdateQuiz(updated);
-    if (answer !== question.answerIndex && !incorrectIndices.includes(activeQuestionIndex)) {
-      setIncorrectIndices((p) => [...p, activeQuestionIndex]);
+  const handleSubmitAnswer = () => {
+    if (selectedAnswer === null) return;
+
+    const updated = [...questions];
+    updated[currentIndex] = { ...currentQuestion, userAnswerIndex: selectedAnswer };
+    onUpdate(updated);
+    setHasAnswered(true);
+
+    if (selectedAnswer === currentQuestion.answerIndex) {
+      confetti({
+        particleCount: 30,
+        spread: 50,
+        origin: { y: 0.6 },
+      });
     }
   };
 
   const handleNext = () => {
-    if (currentIdx < activeQuestionIndices.length - 1) {
-      setCurrentIdx((p) => p + 1);
-      setSelectedOption(null);
-      setIsSubmitted(false);
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedAnswer(null);
+      setHasAnswered(false);
     } else {
-      setIsQuizOver(true);
-      const correct = activeQuestionIndices.filter((i) => quiz[i].userAnswerIndex === quiz[i].answerIndex).length;
-      correct === activeQuestionIndices.length ? firePerfectScoreConfetti() : fireQuizCompleteConfetti();
+      setShowResults(true);
     }
   };
 
-  const handleRestart = () => {
-    onUpdateQuiz(quiz.map((q) => ({ ...q, userAnswerIndex: null })));
-    setActiveQuestionIndices(quiz.map((_, i) => i));
-    setCurrentIdx(0); setSelectedOption(null); setIsSubmitted(false);
-    setIsQuizOver(false); setIncorrectIndices([]); setRetryMode(false);
+  const handleRetry = () => {
+    const reset = questions.map((q) => ({ ...q, userAnswerIndex: null }));
+    onUpdate(reset);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setHasAnswered(false);
+    setShowResults(false);
+    setStartTime(Date.now());
+    setTimeElapsed(0);
   };
 
-  const handleRetryIncorrect = () => {
-    if (!incorrectIndices.length) return;
-    const updated = [...quiz];
-    incorrectIndices.forEach((i) => { updated[i] = { ...updated[i], userAnswerIndex: null }; });
-    onUpdateQuiz(updated);
-    setActiveQuestionIndices([...incorrectIndices]);
-    setIncorrectIndices([]); setCurrentIdx(0); setSelectedOption(null);
-    setIsSubmitted(false); setIsQuizOver(false); setRetryMode(true);
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // ─── Results screen ───────────────────────────────────────────────────────
-  if (isQuizOver) {
-    const total   = activeQuestionIndices.length;
-    const correct = activeQuestionIndices.filter(
-      (i) => quiz[i].userAnswerIndex === quiz[i].answerIndex
-    ).length;
-    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+  // Results View
+  if (showResults) {
+    const isPerfect = correctAnswers === questions.length;
+    const isPassing = score >= 70;
 
     return (
-      <div className="max-w-lg mx-auto py-8 flex flex-col items-center gap-8 text-center">
-        {/* Score ring */}
-        <div className="relative w-32 h-32">
-          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 128 128">
-            <circle cx="64" cy="64" r="54" stroke="rgba(255,255,255,0.06)" strokeWidth="10" fill="none" />
-            <circle
-              cx="64" cy="64" r="54"
-              stroke={pct >= 80 ? "#10B981" : pct >= 50 ? "#F59E0B" : "#F43F5E"}
-              strokeWidth="10" fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${(pct / 100) * 339.3} 339.3`}
-              style={{ transition: "stroke-dasharray 1s ease" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-display text-3xl font-bold text-void-50">{pct}%</span>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-display text-2xl font-bold text-void-50 mb-1">
-            {retryMode ? "Retry Complete" : "Quiz Complete"}
-          </h3>
-          <p className="text-void-400 text-sm">
-            {correct} of {total} correct
-            {pct === 100 && " — Perfect score! 🎉"}
-          </p>
-        </div>
-
-        <div className="flex gap-2 justify-center flex-wrap">
-          {incorrectIndices.length > 0 && (
-            <Button variant="amber" size="md" onClick={handleRetryIncorrect}>
-              Retry wrong ({incorrectIndices.length})
-            </Button>
-          )}
-          <Button variant="secondary" size="md" icon={<RotateCcw className="w-3.5 h-3.5" />} onClick={handleRestart}>
-            Restart quiz
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!question) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-16 text-void-500">
-        <AlertTriangle className="w-8 h-8" />
-        <p>No quiz questions available.</p>
-      </div>
-    );
-  }
-
-  const progressPct = Math.round((currentIdx / activeQuestionIndices.length) * 100);
-  const timerCritical = timeLeft <= 10 && !isSubmitted;
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/12 border border-violet-500/20 flex items-center justify-center">
-            <HelpCircle className="w-4 h-4 text-violet-400" />
-          </div>
-          <div>
-            <h2 className="font-display font-bold text-void-100 text-base">
-              {retryMode ? "Retry Mode" : "Interactive Quiz"}
+      <div className="space-y-6">
+        {/* Results Card */}
+        <Card variant="elevated" padding="none" className="overflow-hidden">
+          <div className={`p-8 sm:p-12 text-center text-white ${isPerfect ? "bg-green-600" : isPassing ? "bg-primary-600" : "bg-slate-600"}`}>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">
+              {isPerfect ? "Perfect Score!" : isPassing ? "Great Job!" : "Keep Practicing!"}
             </h2>
-            <p className="text-[11px] text-void-500 mt-0.5">
-              {retryMode ? "Retrying missed questions" : "Answer each question before time runs out"}
+            <p className="text-base sm:text-lg text-white/90 mb-6 sm:mb-8">
+              You scored {score}% on this quiz
             </p>
           </div>
-        </div>
-        <Button
-          variant="ghost" size="sm"
-          icon={<Download className="w-3.5 h-3.5" />}
-          onClick={() => downloadQuizTxt(quiz, topicTitle)}
-        >
-          Export
-        </Button>
-      </div>
 
-      {/* Progress + timer row */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-mono text-void-500">
-          <span>Question {currentIdx + 1} / {activeQuestionIndices.length}</span>
-          <span className={`flex items-center gap-1.5 ${timerCritical ? "text-rose-400" : ""}`}>
-            <Clock className={`w-3.5 h-3.5 ${timerCritical ? "animate-pulse" : ""}`} />
-            {isSubmitted ? "paused" : `${timeLeft}s`}
-          </span>
-        </div>
-        <div className="h-1 rounded-full bg-void-800 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-violet-500 transition-all duration-500"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-        {/* Timer bar */}
-        {!isSubmitted && (
-          <div className="h-0.5 rounded-full bg-void-800 overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full ${timerCritical ? "bg-rose-500" : "bg-amber-500"}`}
-              style={{ width: `${(timeLeft / 30) * 100}%` }}
-              transition={{ duration: 1, ease: "linear" }}
-            />
-          </div>
-        )}
-      </div>
+          <div className="p-6 sm:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              {[
+                { label: "Score", value: `${score}%`, icon: Award },
+                { label: "Correct", value: `${correctAnswers}/${questions.length}`, icon: Check },
+                { label: "Time", value: formatTime(timeElapsed), icon: Clock },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <Card key={stat.label} padding="md" variant="default" className="text-center">
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{stat.value}</p>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      {stat.label}
+                    </p>
+                  </Card>
+                );
+              })}
+            </div>
 
-      {/* Question card */}
-      <div className="card-raised rounded-2xl p-6 sm:p-8 space-y-6">
-        <h3 className="font-display text-lg sm:text-xl font-bold text-void-50 leading-snug">
-          {question.question}
-        </h3>
-
-        {/* Options */}
-        <div className="space-y-2.5">
-          {question.options.map((opt, idx) => {
-            const isSelected  = selectedOption === idx;
-            const showCorrect = isSubmitted && idx === question.answerIndex;
-            const showWrong   = isSubmitted && isSelected && idx !== question.answerIndex;
-
-            let cls = "w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border text-[13px] font-medium transition-all duration-200 ";
-
-            if (isSubmitted) {
-              cls += showCorrect
-                ? "bg-jade-500/10 border-jade-500/35 text-jade-300"
-                : showWrong
-                ? "bg-rose-500/10 border-rose-500/35 text-rose-300 opacity-80"
-                : "border-[rgba(255,255,255,0.05)] text-void-600 opacity-40";
-            } else {
-              cls += isSelected
-                ? "bg-amber-500/10 border-amber-500/35 text-amber-200"
-                : "border-[rgba(255,255,255,0.08)] text-void-300 hover:border-[rgba(255,255,255,0.16)] hover:text-void-100 hover:bg-white/[0.03] cursor-pointer";
-            }
-
-            return (
-              <button
-                key={idx}
-                onClick={() => !isSubmitted && setSelectedOption(idx)}
-                disabled={isSubmitted}
-                className={cls}
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="primary"
+                size="lg"
+                icon={<RotateCw className="w-4 h-4" />}
+                onClick={handleRetry}
               >
-                <span className={[
-                  "w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 border",
-                  isSubmitted
-                    ? showCorrect
-                      ? "bg-jade-500 border-jade-500 text-void-950"
-                      : showWrong
-                      ? "bg-rose-500 border-rose-500 text-white"
-                      : "border-void-700 text-void-600"
-                    : isSelected
-                    ? "bg-amber-500 border-amber-500 text-void-950"
-                    : "border-void-700 text-void-500",
-                ].join(" ")}>
-                  {isSubmitted ? (
-                    showCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> :
-                    showWrong   ? <XCircle      className="w-3.5 h-3.5" /> :
-                    OPTION_LETTERS[idx]
-                  ) : OPTION_LETTERS[idx]}
-                </span>
-                <span className="flex-1">{opt}</span>
-              </button>
+                Retake Quiz
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Question Review */}
+        <div className="space-y-3 sm:space-y-4">
+          <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">Answer Review</h3>
+          {questions.map((q, idx) => {
+            const isCorrect = q.userAnswerIndex === q.answerIndex;
+            return (
+              <Card key={idx} padding="md" variant="default">
+                <div className="flex items-start gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isCorrect ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
+                    {isCorrect ? (
+                      <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900 dark:text-white mb-2">{q.question}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      <span className="font-medium">Correct Answer:</span> {q.options[q.answerIndex]}
+                    </p>
+                    {!isCorrect && q.userAnswerIndex !== null && (
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                        <span className="font-medium">Your Answer:</span> {q.options[q.userAnswerIndex]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
             );
           })}
         </div>
+      </div>
+    );
+  }
 
-        {/* Submit / explanation / next */}
-        <div className="pt-2">
-          {!isSubmitted ? (
-            <Button
-              variant="amber"
-              size="md"
-              disabled={selectedOption === null}
-              onClick={() => handleSubmit()}
-            >
-              Submit answer
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <AnimatePresence>
-                <motion.div
-                  initial={animationsEnabled ? { opacity: 0, y: 10 } : false}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/20 space-y-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4 text-amber-400" />
-                    <span className="label text-amber-500">Explanation</span>
-                  </div>
-                  <p className="text-void-300 text-[13px] leading-relaxed">{question.explanation}</p>
-                </motion.div>
-              </AnimatePresence>
-              <div className="flex justify-end">
-                <Button
-                  variant="amber"
-                  size="md"
-                  iconEnd={<ArrowRight className="w-3.5 h-3.5" />}
-                  onClick={handleNext}
-                >
-                  {currentIdx < activeQuestionIndices.length - 1 ? "Next question" : "Finish quiz"}
-                </Button>
+  // Quiz Question View
+  return (
+    <div className="space-y-6">
+      {/* Progress Header */}
+      <Card padding="md">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary-600" />
+              <span className="font-medium text-slate-900 dark:text-white text-sm sm:text-base">
+                Question {currentIndex + 1} of {questions.length}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white text-sm sm:text-base">{formatTime(timeElapsed)}</span>
+            </div>
+          </div>
+          <div className="text-right sm:text-left">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Current Score</p>
+            <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{score}%</p>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mt-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+            transition={{ duration: 0.3 }}
+            className="h-full bg-primary-600 dark:bg-primary-500 rounded-full"
+          />
+        </div>
+      </Card>
+
+      {/* Question Card */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Card variant="elevated" padding="lg">
+            {/* Question */}
+            <div className="mb-6 sm:mb-8">
+              <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-primary-600 dark:text-primary-400 uppercase tracking-wide mb-2">
+                    Multiple Choice
+                  </p>
+                  <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">
+                    {currentQuestion.question}
+                  </h3>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Options */}
+            <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+              {currentQuestion.options.map((option, idx) => {
+                const isSelected = selectedAnswer === idx;
+                const isCorrect = idx === currentQuestion.answerIndex;
+                const showCorrect = hasAnswered && isCorrect;
+                const showIncorrect = hasAnswered && isSelected && !isCorrect;
+
+                return (
+                  <motion.button
+                    key={idx}
+                    whileHover={{ scale: hasAnswered ? 1 : 1.01 }}
+                    whileTap={{ scale: hasAnswered ? 1 : 0.99 }}
+                    onClick={() => handleAnswerSelect(idx)}
+                    disabled={hasAnswered}
+                    className={`w-full p-3 sm:p-4 rounded-lg border text-left transition-all font-medium min-h-[52px] sm:min-h-[56px] touch-manipulation ${
+                      showCorrect
+                        ? "bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-600"
+                        : showIncorrect
+                        ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-600"
+                        : isSelected
+                        ? "bg-primary-50 dark:bg-primary-900/20 border-primary-500 dark:border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    } ${hasAnswered ? "cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {/* Letter Badge */}
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${
+                          showCorrect
+                            ? "bg-green-500 text-white"
+                            : showIncorrect
+                            ? "bg-red-500 text-white"
+                            : isSelected
+                            ? "bg-primary-500 text-white"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {String.fromCharCode(65 + idx)}
+                      </div>
+
+                      {/* Option Text */}
+                      <span className="flex-1 text-sm sm:text-base text-slate-700 dark:text-slate-200">{option}</span>
+
+                      {/* Check/X Icon */}
+                      {showCorrect && <Check className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />}
+                      {showIncorrect && <X className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />}
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Explanation (after answering) */}
+            <AnimatePresence>
+              {hasAnswered && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-6"
+                >
+                  <Card
+                    padding="md"
+                    variant="default"
+                    className={`${
+                      selectedAnswer === currentQuestion.answerIndex
+                        ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
+                        : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          selectedAnswer === currentQuestion.answerIndex
+                            ? "bg-green-500"
+                            : "bg-blue-500"
+                        }`}
+                      >
+                        {selectedAnswer === currentQuestion.answerIndex ? (
+                          <Check className="w-4 h-4 text-white" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white mb-1">Explanation</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                          {currentQuestion.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {!hasAnswered ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={<Check className="w-4 h-4" />}
+                  onClick={handleSubmitAnswer}
+                  disabled={selectedAnswer === null}
+                  className="flex-1"
+                >
+                  Submit Answer
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={<ArrowRight className="w-4 h-4" />}
+                  onClick={handleNext}
+                  className="flex-1"
+                >
+                  {currentIndex < questions.length - 1 ? "Next Question" : "View Results"}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };
-
-export default QuizContainer;

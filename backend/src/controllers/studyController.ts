@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { generateStudyPlan } from "../services/groqService.js";
+import { generateStudyPlan } from "../services/geminiService.js";
 import { z } from "zod";
 
 // ─── Request Body Schema ──────────────────────────────────────────────────────
@@ -8,11 +8,25 @@ const GenerateRequestSchema = z.object({
   topic: z
     .string({ required_error: "topic is required" })
     .min(1, "topic cannot be empty")
-    .max(50000, "topic exceeds the 50,000-character limit"),
+    .max(5_000_000, "topic exceeds 5MB — please upload a smaller document"),
   difficulty: z.enum(["Easy", "Medium", "Hard"], {
     required_error: "difficulty must be Easy, Medium, or Hard",
     invalid_type_error: "difficulty must be Easy, Medium, or Hard",
   }),
+  model: z.string().optional(),
+  temperature: z.number().min(0).max(1).optional(),
+  responseLength: z.enum(["short", "medium", "detailed"]).optional(),
+  streamingEnabled: z.boolean().optional(),
+  defaultOutputSections: z.object({
+    summary: z.boolean().optional(),
+    keyConcepts: z.boolean().optional(),
+    flashcards: z.boolean().optional(),
+    quiz: z.boolean().optional(),
+    checklist: z.boolean().optional(),
+    roadmap: z.boolean().optional(),
+    importantTerms: z.boolean().optional(),
+    tips: z.boolean().optional(),
+  }).optional(),
 });
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -36,69 +50,94 @@ export async function createStudyPlan(
     return;
   }
 
-  const { topic, difficulty } = bodyResult.data;
+  const { topic, difficulty, model, temperature, responseLength, streamingEnabled, defaultOutputSections } = bodyResult.data;
 
   try {
-    const { studyPlan, metadata } = await generateStudyPlan(topic, difficulty);
+    const { studyPlan } = await generateStudyPlan(topic, difficulty, () => {}, {
+      model,
+      temperature,
+      responseLength,
+      streamingEnabled,
+      defaultOutputSections,
+    });
 
     res.status(200).json({
       success: true,
       data: studyPlan,
-      debugMetadata: {
-        responseTime: undefined, // Calculated on client side for accuracy
-        model: metadata.model,
-        tokenUsage: metadata.tokenUsage,
-        validationStatus: "valid" as const,
-      },
-      rawJson: metadata.rawJson,
-      model: metadata.model,
-      tokenUsage: metadata.tokenUsage,
     });
   } catch (error: any) {
     const message: string = error?.message ?? "An unexpected error occurred.";
     const status: number = error?.status ?? error?.statusCode ?? 500;
 
-    // ── Groq rate-limit ──────────────────────────────────────────────────────
+    console.error(`[studyController] Generation failed — ${message}`);
+
+    // ── Rate limit or temporary unavailability ───────────────────────────────
     if (status === 429 || message.toLowerCase().includes("rate limit")) {
-      res.status(429).json({
-        success: false,
-        error: {
-          message: "AI rate limit reached. Please wait a moment and try again.",
-          status: 429,
-        },
-      });
-      return;
-    }
-
-    // ── Model returned {error} or schema mismatch ────────────────────────────
-    if (
-      message.includes("study plan schema") ||
-      message.includes("AI model could not generate") ||
-      message.includes("parsed as JSON")
-    ) {
-      res.status(422).json({
-        success: false,
-        error: {
-          message,
-          status: 422,
-        },
-      });
-      return;
-    }
-
-    // ── API key not configured ───────────────────────────────────────────────
-    if (message.includes("GROQ_API_KEY")) {
       res.status(503).json({
         success: false,
         error: {
-          message: "AI service is not configured. Contact the administrator.",
+          message: "AI service is temporarily unavailable. Please try again.",
           status: 503,
         },
       });
       return;
     }
 
-    // ── All other errors → 500 via global handler ────────────────────────────
+    // ── Connection error ──────────────────────────────────────────────────────
+    if (message.includes("ECONNREFUSED") || message.includes("Cannot connect")) {
+      res.status(503).json({
+        success: false,
+        error: {
+          message: "Cannot connect to AI service. Please check your internet connection and API key.",
+          status: 503,
+          code: "service_unavailable",
+        },
+      });
+      return;
+    }
+
+    // ── Timeout ───────────────────────────────────────────────────────────────
+    if (message.includes("timed out") || message.includes("timeout")) {
+      res.status(504).json({
+        success: false,
+        error: {
+          message: "AI generation timed out. Please try again with a shorter input.",
+          status: 504,
+          code: "timeout",
+        },
+      });
+      return;
+    }
+
+    // ── JSON parse failure ────────────────────────────────────────────────────
+    if (message.includes("not valid JSON") || message.includes("JSON.parse") || message.includes("parse")) {
+      res.status(422).json({
+        success: false,
+        error: {
+          message: "AI returned malformed data. Please try again.",
+          detail: message,
+          status: 422,
+          code: "json_parse_failed",
+        },
+      });
+      return;
+    }
+
+    // ── Schema validation failure ─────────────────────────────────────────────
+    if (message.includes("schema mismatch") || message.includes("validation") || message.includes("structure")) {
+      res.status(422).json({
+        success: false,
+        error: {
+          message: "AI response format was incomplete. Please try again.",
+          detail: message,
+          status: 422,
+          code: "schema_mismatch",
+        },
+      });
+      return;
+    }
+
+    // ── All other errors → 500 via global handler ─────────────────────────────
     next(error);
   }
 }

@@ -2,10 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import React from "react";
 
+// Create QueryClient with sensible defaults
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -24,34 +25,29 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
     <QueryClientProvider client={queryClient}>
       {children}
       <Toaster
-        position="top-center"
+        position="bottom-right"
         toastOptions={{
-          duration: 3800,
+          duration: 4000,
           style: {
-            borderRadius: "16px",
-            fontWeight: "500",
+            borderRadius: "12px",
+            fontWeight: "600",
             fontSize: "13px",
-            fontFamily: "Sora, system-ui, sans-serif",
-            padding: "12px 20px",
-            boxShadow: "0 12px 40px rgba(15, 14, 12, 0.18)",
-            background: "#1A1814",
-            color: "#FAF9F6",
-            border: "1px solid #3D3935",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
           },
           success: {
-            iconTheme: { primary: "#10B981", secondary: "#1A1814" },
+            iconTheme: { primary: "#6366f1", secondary: "#fff" },
             style: {
-              background: "#064E3B",
-              color: "#D1FAF0",
-              border: "1px solid #047857",
+              background: "#f0f9ff",
+              color: "#1e1b4b",
+              border: "1px solid #c7d2fe",
             },
           },
           error: {
-            iconTheme: { primary: "#F87171", secondary: "#1A1814" },
+            iconTheme: { primary: "#ef4444", secondary: "#fff" },
             style: {
-              background: "#450A0A",
-              color: "#FEE2E2",
-              border: "1px solid #991B1B",
+              background: "#fef2f2",
+              color: "#7f1d1d",
+              border: "1px solid #fecaca",
             },
           },
         }}

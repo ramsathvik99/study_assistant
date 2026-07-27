@@ -1,83 +1,101 @@
-import React, { forwardRef } from "react";
+import React from "react";
+import { UseFormRegisterReturn } from "react-hook-form";
+import { AlertCircle } from "lucide-react";
 
-interface FormFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FormFieldProps {
   label: string;
+  name: string;
+  type?: "text" | "email" | "password" | "number" | "textarea" | "select";
+  placeholder?: string;
   error?: string;
+  register: UseFormRegisterReturn;
+  options?: { value: string; label: string }[];
+  helperText?: string;
+  required?: boolean;
   icon?: React.ReactNode;
-  trailingAction?: React.ReactNode;
-  hint?: string;
+  rows?: number;
 }
 
-interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label: string;
-  error?: string;
-  hint?: string;
-}
+export const FormField: React.FC<FormFieldProps> = ({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  error,
+  register,
+  options,
+  helperText,
+  required,
+  icon,
+  rows = 4,
+}) => {
+  const baseInputStyles =
+    "w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none font-medium min-h-[48px] touch-manipulation backdrop-blur-lg";
+  const normalStyles =
+    "glass border-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-brand-500 dark:focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10";
+  const errorStyles =
+    "glass border-2 border-danger-500 dark:border-danger-600 text-slate-900 dark:text-white focus:border-danger-600 dark:focus:border-danger-500 focus:ring-4 focus:ring-danger-500/10";
 
-const labelClass = "text-xs font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400 block mb-2";
-const errorClass = "text-xs font-medium text-danger-500 mt-1.5";
-const hintClass = "text-xs text-surface-400 dark:text-surface-500 mt-1.5";
+  const inputStyles = error
+    ? `${baseInputStyles} ${errorStyles}`
+    : `${baseInputStyles} ${normalStyles}`;
 
-export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
-  ({ label, error, icon, trailingAction, hint, id, className = "", ...rest }, ref) => {
-    const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+  return (
+    <div className="space-y-2">
+      {/* Label */}
+      <label htmlFor={name} className="block text-sm font-semibold text-neutral-700 dark:text-slate-300">
+        {label}
+        {required && <span className="text-danger-500 ml-1">*</span>}
+      </label>
 
-    return (
-      <div>
-        <label htmlFor={fieldId} className={labelClass}>{label}</label>
-        <div className="relative">
-          {icon && (
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none">
-              {icon}
-            </span>
-          )}
-          <input
-            ref={ref}
-            id={fieldId}
-            {...rest}
-            className={[
-              "input-field",
-              icon ? "pl-11" : "",
-              trailingAction ? "pr-11" : "",
-              error ? "border-danger-400 focus:ring-danger-400/40 focus:border-danger-500" : "",
-              className,
-            ].join(" ")}
+      {/* Input Container */}
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-slate-500 pointer-events-none">
+            {icon}
+          </div>
+        )}
+
+        {type === "textarea" ? (
+          <textarea
+            id={name}
+            placeholder={placeholder}
+            rows={rows}
+            className={`${inputStyles} ${icon ? "pl-11" : ""} resize-none min-h-[120px]`}
+            {...register}
           />
-          {trailingAction && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2">{trailingAction}</span>
-          )}
+        ) : type === "select" && options ? (
+          <select
+            id={name}
+            className={`${inputStyles} ${icon ? "pl-11" : ""} cursor-pointer`}
+            {...register}
+          >
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id={name}
+            type={type}
+            placeholder={placeholder}
+            className={`${inputStyles} ${icon ? "pl-11" : ""}`}
+            {...register}
+          />
+        )}
+      </div>
+
+      {/* Helper Text or Error */}
+      {error ? (
+        <div className="flex items-center gap-2 text-danger-600 dark:text-danger-400">
+          <AlertCircle className="w-4 h-4" />
+          <p className="text-sm font-medium">{error}</p>
         </div>
-        {hint && !error && <p className={hintClass}>{hint}</p>}
-        {error && <p className={errorClass}>{error}</p>}
-      </div>
-    );
-  }
-);
-
-FormField.displayName = "FormField";
-
-export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
-  ({ label, error, hint, id, className = "", ...rest }, ref) => {
-    const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
-
-    return (
-      <div>
-        <label htmlFor={fieldId} className={labelClass}>{label}</label>
-        <textarea
-          ref={ref}
-          id={fieldId}
-          {...rest}
-          className={[
-            "input-field resize-none",
-            error ? "border-danger-400 focus:ring-danger-400/40 focus:border-danger-500" : "",
-            className,
-          ].join(" ")}
-        />
-        {hint && !error && <p className={hintClass}>{hint}</p>}
-        {error && <p className={errorClass}>{error}</p>}
-      </div>
-    );
-  }
-);
-
-FormTextarea.displayName = "FormTextarea";
+      ) : helperText ? (
+        <p className="text-sm text-neutral-500 dark:text-slate-400">{helperText}</p>
+      ) : null}
+    </div>
+  );
+};

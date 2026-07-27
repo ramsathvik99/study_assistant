@@ -1,311 +1,417 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FileUploadZone } from "../features/fileUpload/FileUploadZone.js";
-import { GenerateStudyPlanSchema, GenerateStudyPlanInput } from "../schemas/index.js";
-import { useGenerateStudyPlan } from "../hooks/useGenerateStudyPlan.js";
-import { StudySession } from "../types/index.js";
-import { Button } from "../components/common/Button.js";
+import { motion } from "framer-motion";
 import {
-  Sparkles, FileUp, AlignLeft, ArrowRight, X,
-  BookOpen, Zap, BarChart2, Brain
+  Sparkles,
+  FileText,
+  Zap,
+  Brain,
+  Target,
+  Award,
+  BookOpen,
+  TrendingUp,
+  Shield,
+  Rocket,
+  Layers,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { Card } from "../components/common/Card";
+import { Button } from "../components/common/Button";
+import { ErrorToast } from "../components/common/ErrorToast";
+import { GenerateStudyPlanSchema, GenerateStudyPlanInput } from "../schemas/index";
+import { StudySession } from "../types/index";
+import { CelebrationAnimation } from "../components/animations/CelebrationAnimation";
+import { useGenerateStudyPlan } from "../hooks/useGenerateStudyPlan";
+import { useCancelOnNavigate } from "../hooks/useCancelOnNavigate";
+import { getErrorInfo } from "../utils/errorHandler";
 
 interface HomeProps {
   onStartSession: (session: StudySession) => void;
   activeSession: StudySession | null;
 }
 
-const QUICK_PROMPTS = [
-  "Operating system scheduling algorithms",
-  "Database normalization up to 3NF",
-  "Machine learning gradient descent",
-  "TCP/IP networking fundamentals",
+const FEATURE_CARDS = [
+  {
+    icon: Brain,
+    title: "AI-Powered Generation",
+    description: "Advanced language models create personalized study materials instantly",
+    gradient: "from-primary-500 to-primary-600",
+    bgColor: "bg-primary-50",
+  },
+  {
+    icon: Target,
+    title: "Interactive Learning",
+    description: "Flashcards, quizzes, and roadmaps designed for maximum retention",
+    gradient: "from-emerald-500 to-emerald-600",
+    bgColor: "bg-emerald-50",
+  },
+  {
+    icon: TrendingUp,
+    title: "Track Progress",
+    description: "Monitor your learning journey with detailed analytics and insights",
+    gradient: "from-accent-500 to-accent-600",
+    bgColor: "bg-accent-50",
+  },
 ];
 
-const DIFFICULTY_OPTS = ["Easy", "Medium", "Hard"] as const;
+const QUICK_STARTS = [
+  { topic: "Machine Learning Fundamentals", color: "primary" },
+  { topic: "React & TypeScript", color: "emerald" },
+  { topic: "System Design Patterns", color: "purple" },
+  { topic: "Data Structures & Algorithms", color: "accent" },
+];
 
-const DIFF_STYLE: Record<string, string> = {
-  Easy:   "border-jade-500/40 text-jade-400 bg-jade-500/8",
-  Medium: "border-amber-500/40 text-amber-400 bg-amber-500/8",
-  Hard:   "border-rose-500/40  text-rose-400  bg-rose-500/8",
-};
+export const Home: React.FC<HomeProps> = ({ onStartSession }) => {
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [isErrorVisible, setIsErrorVisible] = useState(false);
+  const [errorInfo, setErrorInfo] = useState<ReturnType<typeof getErrorInfo> | null>(null);
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export const Home: React.FC<HomeProps> = ({ onStartSession, activeSession }) => {
-  const [mode, setMode] = useState<"text" | "upload">("text");
-  const [fileName, setFileName] = useState<string | null>(null);
+  // Cancel any in-flight requests when navigating away
+  useCancelOnNavigate();
 
   const {
-    register, handleSubmit, watch, setValue, reset,
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
     formState: { errors },
   } = useForm<GenerateStudyPlanInput>({
     resolver: zodResolver(GenerateStudyPlanSchema),
     defaultValues: { topic: "", difficulty: "Medium" },
   });
 
-  const topic      = watch("topic");
+  const topic = watch("topic");
   const difficulty = watch("difficulty");
 
-  const { mutate: generate, isPending, reset: resetMutation } = useGenerateStudyPlan({
-    onSuccess: onStartSession,
+  const { mutate: generate, isPending: isLoading } = useGenerateStudyPlan({
+    onSuccess: (session) => {
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 100);
+      onStartSession(session);
+    },
+    onError: (error) => {
+      setErrorInfo(error);
+      setIsErrorVisible(true);
+    },
   });
 
-  const submit = (data: GenerateStudyPlanInput) => generate(data);
+  const onSubmit = (data: GenerateStudyPlanInput) => {
+    // Prevent duplicate submissions while loading
+    if (isLoading) {
+      console.log("[Home] Submission blocked - already loading");
+      return;
+    }
+    generate({ topic: data.topic, difficulty: data.difficulty });
+  };
 
-  const clearInput = () => {
-    reset();
-    setFileName(null);
-    resetMutation();
+  const handleRetry = () => {
+    // Clear error state before retrying
+    setIsErrorVisible(false);
+    setErrorInfo(null);
+    
+    const currentTopic = watch("topic");
+    const currentDifficulty = watch("difficulty");
+    if (currentTopic.trim()) {
+      console.log("[Home] Retrying generation for topic:", currentTopic);
+      generate({ topic: currentTopic, difficulty: currentDifficulty });
+    }
+  };
+
+  const loadingLabel = isLoading ? "Generating..." : "Generate Study Plan";
+
+  const handleQuickStart = (topicText: string) => {
+    setValue("topic", topicText, { shouldValidate: true });
   };
 
   return (
-    <div className="min-h-[calc(100dvh-48px)] flex flex-col">
-      {/* ── Hero ambient glow ─────────────────────────────────────────── */}
-      <div className="hero-glow" aria-hidden />
+    <div className="min-h-screen transition-colors">
+      {/* Error Toast */}
+      {errorInfo && (
+        <ErrorToast
+          isVisible={isErrorVisible}
+          title={errorInfo.title}
+          message={errorInfo.message}
+          icon={errorInfo.icon}
+          onClose={() => setIsErrorVisible(false)}
+          onRetry={handleRetry}
+          showRetry={errorInfo.action === 'retry' || errorInfo.action === 'both'}
+        />
+      )}
 
-      <div className="flex-1 w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-10 lg:py-14 space-y-10">
+      {/* Hero Section - Compact with visible background */}
+      <section className="relative min-h-[calc(100vh-100px)] flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
+        {/* Animated CTA particles for home */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={`hero-particle-${i}`}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{
+                opacity: [0, 0.5, 0],
+                scale: [0, 1.5, 0],
+                x: [0, Math.random() * 200 - 100],
+                y: [0, Math.random() * 200 - 100],
+              }}
+              transition={{
+                duration: 4 + i,
+                delay: i * 0.5,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+              className="absolute top-1/2 left-1/2 w-4 h-4 rounded-full bg-gradient-to-br from-primary-400 to-cyan-400"
+            />
+          ))}
+        </div>
 
-        {/* ── Page header ──────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="space-y-3"
-        >
-          <div className="flex items-center gap-2">
-            <span className="badge-amber">
-              <Sparkles className="w-3 h-3" /> AI-Powered
-            </span>
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-void-50 leading-[1.05]">
-            Turn any topic into<br />
-            <span className="text-gradient-amber">a complete study system.</span>
-          </h1>
-          <p className="text-void-400 text-base max-w-lg leading-relaxed">
-            Paste notes, name a subject, or upload a document — Mosaic builds flashcards, quizzes, roadmaps, and mnemonics in seconds.
-          </p>
-        </motion.div>
-
-        {/* ── Main layout: generator + sidebar ─────────────────────────── */}
-        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-
-          {/* ── Left: Generator card ───────────────────────────────────── */}
+        {/* Hero Content - Centered and compact */}
+        <div className="relative z-10 w-full max-w-2xl">
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.44, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="card-raised overflow-hidden"
+            transition={{ duration: 0.6 }}
+            className="text-center mb-8 sm:mb-10"
           >
-            {/* Tab bar */}
-            <div className="flex border-b border-[rgba(255,255,255,0.07)]">
-              {(["text", "upload"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={[
-                    "flex items-center gap-2 px-5 py-3.5 text-[13px] font-medium transition-colors focus-ring",
-                    mode === m
-                      ? "text-amber-400 border-b-2 border-amber-500 -mb-px bg-amber-500/5"
-                      : "text-void-500 hover:text-void-300 border-b-2 border-transparent",
-                  ].join(" ")}
-                >
-                  {m === "text" ? <AlignLeft className="w-3.5 h-3.5" /> : <FileUp className="w-3.5 h-3.5" />}
-                  {m === "text" ? "Write / Paste" : "Upload Document"}
-                </button>
-              ))}
-            </div>
+            {/* Badge */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 glass-sm rounded-full mb-4 sm:mb-6"
+            >
+              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse" />
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Powered by Advanced AI</span>
+            </motion.div>
 
-            {/* Content */}
-            <div className="p-6 sm:p-8">
-              <AnimatePresence mode="wait" initial={false}>
-                {mode === "text" ? (
-                  <motion.form
-                    key="text-form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    onSubmit={handleSubmit(submit)}
-                    className="space-y-5"
-                  >
-                    {/* Textarea label row */}
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="label">
-                        {fileName ? `Source — ${fileName}` : "Study material"}
-                      </label>
-                      {topic && (
-                        <button
-                          type="button"
-                          onClick={clearInput}
-                          className="flex items-center gap-1 text-[11px] text-void-500 hover:text-rose-400 transition-colors"
-                        >
-                          <X className="w-3 h-3" /> Clear
-                        </button>
-                      )}
-                    </div>
+            {/* Main Heading */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-black mb-4 sm:mb-6 leading-tight">
+              <span className="gradient-text">
+                Master Any Topic
+              </span>
+              <br />
+              <span className="text-slate-900 dark:text-white">With AI Power</span>
+            </h1>
 
-                    <textarea
-                      {...register("topic")}
-                      placeholder="Paste notes, a syllabus, or simply name a subject…"
-                      disabled={isPending}
-                      rows={7}
-                      className={[
-                        "input resize-none w-full",
-                        errors.topic ? "border-rose-500/60 focus:!border-rose-500 focus:!shadow-[0_0_0_3px_rgba(244,63,94,.15)]" : "",
-                      ].join(" ")}
-                    />
-                    {errors.topic && (
-                      <p className="text-xs text-rose-400 -mt-2">{errors.topic.message}</p>
-                    )}
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto mb-6 sm:mb-8">
+              Transform your notes into interactive flashcards, quizzes, and personalized study roadmaps in seconds
+            </p>
 
-                    {/* Bottom controls */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-                      {/* Difficulty */}
-                      <div className="flex items-center gap-2">
-                        <span className="label mr-1">Depth</span>
-                        {DIFFICULTY_OPTS.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => setValue("difficulty", d)}
-                            className={[
-                              "px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-all",
-                              difficulty === d
-                                ? DIFF_STYLE[d]
-                                : "border-[rgba(255,255,255,0.08)] text-void-500 hover:text-void-300 hover:border-[rgba(255,255,255,0.14)]",
-                            ].join(" ")}
-                          >
-                            {d}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Submit */}
-                      <Button
-                        type="submit"
-                        variant="amber"
-                        size="md"
-                        isLoading={isPending}
-                        icon={<Sparkles className="w-3.5 h-3.5" />}
-                        className="sm:self-end"
-                      >
-                        {isPending ? "Building plan…" : "Generate study plan"}
-                      </Button>
-                    </div>
-                  </motion.form>
-                ) : (
+            {/* Feature Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              {[
+                { icon: Shield, label: "100% Free", color: "primary" },
+                { icon: Rocket, label: "Instant", color: "secondary" },
+                { icon: Sparkles, label: "AI-Powered", color: "accent" },
+              ].map((item, idx) => {
+                const Icon = item.icon;
+                return (
                   <motion.div
-                    key="upload-zone"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.18 }}
+                    key={item.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + idx * 0.1 }}
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 glass-sm rounded-full`}
                   >
-                    <FileUploadZone
-                      onUploadSuccess={(text, name) => {
-                        setValue("topic", text, { shouldValidate: true });
-                        setFileName(name);
-                        setMode("text");
-                      }}
-                    />
+                    <Icon className={`w-4 h-4 text-${item.color}-600`} />
+                    <span className={`text-xs sm:text-sm font-bold text-slate-900 dark:text-white`}>{item.label}</span>
                   </motion.div>
-                )}
-              </AnimatePresence>
+                );
+              })}
             </div>
           </motion.div>
 
-          {/* ── Right sidebar ──────────────────────────────────────────── */}
+          {/* Main Input Card - Glass Panel */}
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.44, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col gap-4"
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="w-full"
           >
-            {/* Active session card */}
-            <div className={[
-              "rounded-xl border p-5 space-y-4",
-              activeSession
-                ? "bg-amber-500/6 border-amber-500/20"
-                : "border-[rgba(255,255,255,0.07)] bg-void-900/60",
-            ].join(" ")}>
-              <div className="flex items-center justify-between">
-                <span className="label">Active session</span>
-                {activeSession && (
-                  <span className="badge-amber">live</span>
-                )}
-              </div>
+            <div className="glass-strong rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-2xl">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
+                <div>
+                  <textarea
+                    {...register("topic")}
+                    placeholder="Enter your study topic or paste your notes here..."
+                    rows={4}
+                    className="w-full px-4 sm:px-5 py-3 sm:py-4 glass text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-primary-500/20 dark:focus:ring-primary-900/20 transition-all resize-none text-sm sm:text-base min-h-[100px] touch-manipulation font-medium"
+                  />
+                  {errors.topic && (
+                    <p className="mt-2 text-xs sm:text-sm font-bold text-error-500 dark:text-error-400">{errors.topic.message}</p>
+                  )}
+                </div>
 
-              {activeSession ? (
-                <>
-                  <div>
-                    <p className="text-void-50 font-semibold text-sm leading-snug line-clamp-2">
-                      {activeSession.studyPlan.title}
-                    </p>
-                    <p className="text-void-500 text-xs mt-1 truncate">"{activeSession.topic}"</p>
-                  </div>
-                  <Button
-                    variant="amber"
-                    size="sm"
-                    iconEnd={<ArrowRight className="w-3.5 h-3.5" />}
-                    className="w-full"
-                    onClick={() => window.location.assign("/session")}
-                  >
-                    Open study room
-                  </Button>
-                </>
-              ) : (
-                <p className="text-void-500 text-xs">
-                  No active session. Generate a plan above to get started.
-                </p>
-              )}
-            </div>
-
-            {/* What you get */}
-            <div className="card rounded-xl p-5 space-y-3">
-              <p className="label">What you get</p>
-              {[
-                { icon: Brain,     label: "AI summary",    desc: "Core ideas distilled" },
-                { icon: Zap,       label: "Flashcards",    desc: "Spaced recall practice" },
-                { icon: BarChart2, label: "Quizzes",       desc: "Timed question sets" },
-                { icon: BookOpen,  label: "Roadmap",       desc: "Sequenced learning path" },
-              ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-void-800 border border-[rgba(255,255,255,0.07)] flex items-center justify-center shrink-0">
-                    <Icon className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="text-void-200 text-[13px] font-medium">{label}</p>
-                    <p className="text-void-500 text-[11px]">{desc}</p>
+                {/* Difficulty Pills */}
+                <div className="space-y-3">
+                  <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Difficulty Level
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {(["Easy", "Medium", "Hard"] as const).map((level) => (
+                      <label key={level} className={`relative cursor-pointer ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        <input
+                          type="radio"
+                          value={level}
+                          {...register("difficulty")}
+                          disabled={isLoading}
+                          className="peer sr-only"
+                        />
+                        <div className={`px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xs sm:text-sm glass rounded-lg sm:rounded-xl font-bold transition-all peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 peer-checked:shadow-soft peer-checked:dark:shadow-md text-slate-900 dark:text-slate-200 min-h-[44px] flex items-center justify-center ${isLoading ? 'pointer-events-none' : ''}`}>
+                          {level}
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Quick-start prompts */}
-            <div className="card rounded-xl p-5 space-y-2">
-              <p className="label mb-3">Quick starts</p>
-              {QUICK_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => {
-                    setValue("topic", prompt, { shouldValidate: true });
-                    setMode("text");
-                  }}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[12px] text-void-400 hover:text-void-100 hover:bg-white/5 border border-transparent hover:border-[rgba(255,255,255,0.08)] transition-all group"
+                {topic && (
+                  <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    <span>{topic.trim().split(/\s+/).filter(Boolean).length} words</span>
+                    <span>•</span>
+                    <span>~{Math.ceil(topic.trim().split(/\s+/).filter(Boolean).length / 200)} min read</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="submit"
+                    variant="gradient"
+                    size="lg"
+                    isLoading={isLoading}
+                    icon={<Sparkles className="w-4 h-4" />}
+                    fullWidth
+                    disabled={!topic.trim() || isLoading}
+                  >
+                    <span className="hidden sm:inline">{loadingLabel}</span>
+                    <span className="sm:hidden">Generate</span>
+                  </Button>
+
+                  {(topic || isLoading) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => reset()}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </motion.div>
+
+          {/* Quick Start Topics */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 sm:mt-10 w-full"
+          >
+            <p className="text-center text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4 sm:mb-5">
+              Or try a popular topic
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              {QUICK_STARTS.map((item, idx) => (
+                <motion.button
+                  key={item.topic}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6 + idx * 0.05 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  onClick={() => handleQuickStart(item.topic)}
+                  className={`p-3 sm:p-4 glass-sm rounded-lg sm:rounded-xl hover:shadow-lg transition-all text-left group min-h-[70px] sm:min-h-[80px]`}
                 >
-                  <ArrowRight className="w-3 h-3 text-amber-500/50 group-hover:text-amber-400 shrink-0 transition-colors" />
-                  {prompt}
-                </button>
+                  <div className={`w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-lg flex items-center justify-center mb-2 sm:mb-2.5 group-hover:scale-105 transition-transform`}>
+                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                  </div>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">{item.topic}</p>
+                </motion.button>
               ))}
             </div>
           </motion.div>
         </div>
-      </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-slate-900 dark:text-white mb-3 sm:mb-4">
+              Why Choose StudyFlow?
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Everything you need to master any subject, powered by cutting-edge AI
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {FEATURE_CARDS.map((feature, idx) => {
+              const Icon = feature.icon;
+              return (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div className="glass h-full rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-2xl hover:shadow-lg transition-all">
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br ${feature.gradient} rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-5 shadow-soft`}>
+                      <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white mb-2 sm:mb-3">
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="glass-xl backdrop-blur-3xl rounded-3xl sm:rounded-4xl p-8 sm:p-12 lg:p-16 text-center"
+          >
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-slate-900 dark:text-white mb-4 sm:mb-5">
+              Ready to Transform Your Learning?
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-6 sm:mb-8 max-w-xl mx-auto">
+              Join thousands of students achieving their academic goals with AI-powered study materials
+            </p>
+            <Button
+              variant="gradient"
+              size="lg"
+              icon={<Sparkles className="w-5 h-5" />}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
+              Get Started Now
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Celebration Animation */}
+      <CelebrationAnimation trigger={showCelebration} type="success" />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { StudyPlan, Flashcard, QuizQuestion } from "../types/index.js";
+import { StudyPlan, Flashcard, QuizQuestion } from "../types/index";
 
 /**
  * Formats study materials into a clean, print-ready document and opens the browser print dialog.

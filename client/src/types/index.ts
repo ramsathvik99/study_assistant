@@ -107,8 +107,64 @@ export interface Achievement {
 }
 
 export interface AppSettings {
+  // Appearance
   darkMode: boolean;
+  accentColor: "primary" | "emerald" | "purple" | "blue" | "pink" | "orange";
   animationsEnabled: boolean;
+  reducedMotion: boolean;
+  fontSize: "small" | "medium" | "large";
+  highContrast: boolean;
+  
+  // AI Settings
+  aiModel: string;
+  responseLength: "short" | "medium" | "detailed";
+  temperature: number;
+  streamingEnabled: boolean;
+  defaultDifficulty: "Easy" | "Medium" | "Hard";
+  autoGenerateQuiz: boolean;
+  includeMnemonics: boolean;
+  defaultOutputSections: {
+    summary: boolean;
+    keyConcepts: boolean;
+    flashcards: boolean;
+    quiz: boolean;
+    checklist: boolean;
+    roadmap: boolean;
+    importantTerms: boolean;
+    tips: boolean;
+  };
+  
+  // Document Settings
+  maxChunkSize: number;
+  autoSummarization: boolean;
+  ocrEnabled: boolean;
+  rememberLastFolder: boolean;
+  
+  // Notifications
+  notificationsEnabled: boolean;
+  studyReminders: boolean;
+  completionNotifications: boolean;
+  achievementAlerts: boolean;
+  
+  // Privacy
+  saveStudyHistory: boolean;
+  analyticsEnabled: boolean;
+  
+  // Account
+  displayName: string;
+  
+  // Keyboard
+  keyboardShortcutsEnabled: boolean;
+  
+  // Language
+  language: "en" | "es" | "fr" | "de" | "zh" | "ja";
+  
+  // Accessibility
+  largeText: boolean;
+  keyboardNavigation: boolean;
+  screenReaderEnhancements: boolean;
+  
+  // Developer
   developerMode: boolean;
 }
 

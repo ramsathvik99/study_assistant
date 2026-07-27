@@ -9,7 +9,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: GROQ_API_KEY
-        sync: false        # Set manually in Render Dashboard → Environment
+      - key: GEMINI_API_KEY
+        generateValue: true
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
       - key: FRONTEND_URL
         value: https://study-assistant-468n-murex.vercel.app

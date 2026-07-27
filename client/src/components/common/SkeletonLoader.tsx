@@ -1,74 +1,76 @@
 import React from "react";
+import { motion } from "framer-motion";
 
-// ─── Skeleton primitive ───────────────────────────────────────────────────────
-
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SkeletonProps {
   className?: string;
+  variant?: "text" | "title" | "avatar" | "card" | "button";
+  count?: number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = "", style, ...rest }) => (
-  <div
-    className={[
-      "rounded-lg overflow-hidden relative",
-      "bg-void-800",
-      className,
-    ].join(" ")}
-    style={{
-      backgroundImage:
-        "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%)",
-      backgroundSize: "200% 100%",
-      animation: "shimmer 1.6s linear infinite",
-      ...style,
-    }}
-    {...rest}
-  />
-);
+export const Skeleton: React.FC<SkeletonProps> = ({
+  className = "",
+  variant = "text",
+  count = 1,
+}) => {
+  const variantStyles = {
+    text: "h-4 w-full rounded-lg",
+    title: "h-8 w-3/4 rounded-lg",
+    avatar: "h-12 w-12 rounded-full",
+    card: "h-48 w-full rounded-2xl",
+    button: "h-10 w-32 rounded-xl",
+  };
 
-// ─── Session skeleton ─────────────────────────────────────────────────────────
+  const items = Array.from({ length: count }, (_, i) => i);
 
-export const SessionSkeletonLoader: React.FC = () => (
-  <div className="space-y-6 max-w-4xl mx-auto px-4 py-8">
-    {/* Header */}
-    <div className="space-y-3">
-      <Skeleton className="h-3 w-24" />
-      <Skeleton className="h-9 w-2/3" />
-      <div className="flex gap-2">
-        <Skeleton className="h-5 w-20 rounded-full" />
-        <Skeleton className="h-5 w-28 rounded-full" />
-      </div>
-    </div>
-
-    {/* Tab bar */}
-    <div className="flex gap-2">
-      {[80, 72, 88, 60, 80, 96].map((w, i) => (
-        <Skeleton key={i} className="h-8 rounded-lg" style={{ width: w }} />
+  return (
+    <>
+      {items.map((index) => (
+        <motion.div
+          key={index}
+          className={`bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 bg-[length:200%_100%] animate-shimmer ${variantStyles[variant]} ${className}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: index * 0.05 }}
+        />
       ))}
-    </div>
+    </>
+  );
+};
 
-    {/* Content panel */}
-    <div className="card p-6 space-y-4">
-      <div className="flex justify-between items-center">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-8 w-28 rounded-lg" />
+export const SkeletonLoader: React.FC<{ type?: "card" | "list" | "grid" }> = ({ type = "list" }) => {
+  if (type === "card") {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Skeleton variant="title" />
+          <Skeleton variant="text" count={3} className="space-y-2" />
+        </div>
+        <Skeleton variant="card" />
       </div>
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-[95%]" />
-      <Skeleton className="h-4 w-4/5" />
-      <Skeleton className="h-4 w-[90%]" />
-      <Skeleton className="h-4 w-3/5" />
-    </div>
+    );
+  }
 
-    {/* Two col grid */}
-    <div className="grid grid-cols-2 gap-4">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="card p-5 space-y-3">
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-5/6" />
+  if (type === "grid") {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} variant="card" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton variant="avatar" />
+          <div className="flex-1 space-y-2">
+            <Skeleton variant="text" className="w-3/4" />
+            <Skeleton variant="text" className="w-1/2" />
+          </div>
         </div>
       ))}
     </div>
-  </div>
-);
-
-export default SessionSkeletonLoader;
+  );
+};

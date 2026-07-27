@@ -1,68 +1,68 @@
 import React from "react";
-import { motion, MotionProps } from "framer-motion";
+import { motion } from "framer-motion";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps {
   children: React.ReactNode;
   className?: string;
-  /** Lift card slightly on hover */
-  animateHover?: boolean;
-  animationsEnabled?: boolean;
-  /** Visual variant */
-  variant?: "default" | "raised" | "inset" | "ghost" | "amber";
-  /** Deprecated legacy props — kept for backward compat, ignored visually */
-  accent?: string;
-  glowColor?: string;
+  variant?: "default" | "bordered" | "elevated" | "gradient" | "glass";
+  padding?: "none" | "sm" | "md" | "lg" | "xl";
+  hover?: boolean;
+  onClick?: () => void;
+  accent?: "primary" | "secondary" | "accent" | "emerald" | "purple" | "pink" | "indigo" | "none";
 }
-
-// ─── Style maps ───────────────────────────────────────────────────────────────
-
-const VARIANT: Record<string, string> = {
-  default: "card p-5",
-  raised:  "card-raised p-5",
-  inset:   "bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-5",
-  ghost:   "border border-transparent bg-transparent rounded-xl p-5",
-  amber:   "bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.2)] rounded-xl p-5 hover:border-[rgba(245,158,11,0.35)]",
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export const Card: React.FC<CardProps> = ({
   children,
   className = "",
-  animateHover = false,
-  animationsEnabled = true,
   variant = "default",
-  accent: _accent,
-  glowColor: _glowColor,
-  ...rest
+  padding = "md",
+  hover = false,
+  onClick,
+  accent = "none",
 }) => {
-  const base = `${VARIANT[variant] ?? VARIANT.default} ${className}`;
+  const paddingStyles = {
+    none: "p-0",
+    sm: "p-4",
+    md: "p-6",
+    lg: "p-8",
+    xl: "p-10",
+  };
 
-  if (animateHover && animationsEnabled) {
-    // Strip non-motion HTML attrs from rest to avoid TS errors
-    const { onClick, style, id, "aria-label": al, tabIndex, ...motionRest } = rest as any;
-    return (
-      <motion.div
-        whileHover={{ y: -3, transition: { duration: 0.18 } }}
-        className={base}
-        onClick={onClick}
-        style={style}
-        id={id}
-        aria-label={al}
-        tabIndex={tabIndex}
-      >
-        {children}
-      </motion.div>
-    );
-  }
+  const variantStyles = {
+    default: "glass",
+    bordered: "glass border-2",
+    elevated: "glass-strong shadow-lg dark:shadow-2xl",
+    gradient: "glass-strong shadow-lg dark:shadow-2xl",
+    glass: "glass",
+  };
+
+  const accentStyles = accent !== "none" 
+    ? `border-l-4 transition-colors ${
+        accent === "primary" ? "border-l-primary-500 dark:border-l-primary-400" :
+        accent === "secondary" ? "border-l-secondary-500 dark:border-l-secondary-400" :
+        accent === "accent" ? "border-l-accent-500 dark:border-l-accent-400" :
+        accent === "emerald" ? "border-l-emerald-500 dark:border-l-emerald-400" :
+        accent === "purple" ? "border-l-purple-500 dark:border-l-purple-400" :
+        accent === "pink" ? "border-l-pink-500 dark:border-l-pink-400" :
+        accent === "indigo" ? "border-l-indigo-500 dark:border-l-indigo-400" :
+        ""
+      }`
+    : "";
+
+  const hoverStyles = hover
+    ? "hover:shadow-soft-xl dark:hover:shadow-2xl hover:-translate-y-1 cursor-pointer transition-all duration-200"
+    : "";
 
   return (
-    <div className={base} {...rest}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={hover ? { y: -4, transition: { duration: 0.2 } } : {}}
+      onClick={onClick}
+      className={`rounded-3xl ${variantStyles[variant]} ${paddingStyles[padding]} ${accentStyles} ${hoverStyles} ${className}`}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 };
-
-export default Card;

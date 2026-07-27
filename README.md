@@ -1,263 +1,452 @@
-# Mosaic — AI Study Platform
+# StudyFlow - AI-Powered Study Assistant
 
-Turn any topic, notes, or document into a complete study system in seconds.
-Mosaic uses the Groq API (Llama 3.3 70B) to generate flashcards, quizzes, roadmaps, mnemonics, and revision tips from any study material.
+![StudyFlow](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Live demo:**
-- Frontend → https://study-assistant-468n-murex.vercel.app
-- Backend API → https://study-assistant-mg5l.onrender.com/health
+StudyFlow is a modern, full-stack web application that transforms study materials into interactive learning experiences using AI. Generate personalized study plans, flashcards, quizzes, and learning roadmaps from any topic or document in seconds.
 
----
+## 🎯 Key Features
 
-## Stack
+### Core AI Features
+- **Smart Study Plan Generation** - AI-powered creation of comprehensive study materials from topics or notes
+- **Interactive Flashcards** - Flip-card learning with favorites, difficulty tracking, and shuffle functionality
+- **Adaptive Quizzes** - Multiple-choice questions with instant feedback and performance tracking
+- **Learning Roadmaps** - Phase-based study progression with task checklists and completion tracking
+- **Revision Tips & Mnemonics** - Memory aids and study strategies for better retention
+- **Key Concepts** - Organized concept breakdowns with detailed explanations
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Framer Motion |
-| Backend | Node.js, Express, TypeScript |
-| AI | Groq SDK — Llama 3.3 70B Versatile |
-| Deployment | Vercel (frontend) · Render (backend) |
+### User Experience
+- **Beautiful Glass-morphism UI** - Modern, responsive design with smooth animations
+- **Dark Mode Support** - Eye-friendly theme customization
+- **Session Management** - Save and organize study sessions with bookmarking
+- **Study History** - Track all generated study materials
+- **Real-time Progress** - Visual indicators for study completion and accuracy
+- **Responsive Design** - Works seamlessly on desktop, tablet, and mobile
 
----
+### Reliability & Performance
+- **Race Condition Prevention** - Request sequence tracking prevents stale responses
+- **Automatic Request Cancellation** - On navigation, unmount, and resubmit
+- **Timeout Handling** - Graceful error messages with retry functionality
+- **Malformed JSON Recovery** - Safe parsing with fallback values
+- **Network Resilience** - Offline detection and connection error handling
+- **Loading State Management** - Consistent, non-blocking progress indicators
 
-## Local Development
+## 🛠 Tech Stack
+
+### Frontend
+- **React 18** - UI component library with hooks
+- **TypeScript** - Type-safe development
+- **Vite** - Lightning-fast build tool
+- **React Router** - Client-side routing
+- **Framer Motion** - Advanced animations and transitions
+- **TailwindCSS** - Utility-first styling
+- **React Hook Form** - Form state management
+- **React Hot Toast** - Toast notifications
+- **TanStack React Query** - Server state management
+- **Axios** - HTTP client with request cancellation
+- **Zod** - TypeScript-first schema validation
+
+### Backend
+- **Node.js + Express** - Server runtime and framework
+- **TypeScript** - Type-safe backend code
+- **Google Generative AI (Gemini)** - AI model integration
+- **Zod** - Input validation
+- **CORS** - Cross-origin resource sharing
+- **Environment variables** - Secure configuration
+
+### Infrastructure
+- **Render** - Deployment platform (configured)
+- **JSON Storage** - File-based data persistence (dev/demo)
+
+## 📋 Installation
 
 ### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Google Gemini API key (free at [Google AI Studio](https://aistudio.google.com/))
 
-- Node.js 20+
-- A [Groq API key](https://console.groq.com/keys) (free tier available)
+### Backend Setup
 
-### 1 — Clone
-
-```bash
-git clone https://github.com/your-username/study-assistant.git
-cd study-assistant
-```
-
-### 2 — Backend setup
-
+1. **Navigate to backend directory:**
 ```bash
 cd backend
+```
+
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+3. **Create environment file:**
+```bash
 cp .env.example .env
 ```
 
-Open `backend/.env` and fill in:
-
-```env
-PORT=5000
-GROQ_API_KEY=gsk_your_key_here
-FRONTEND_URL=http://localhost:5173
+4. **Add your Gemini API key:**
+```
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Install and start:
-
+5. **Start the backend server:**
 ```bash
-npm install
 npm run dev
 ```
 
-The backend starts on **http://localhost:5000**.
-Verify it's healthy: http://localhost:5000/health
+The server will run on `http://localhost:5000`
 
-### 3 — Frontend setup
+### Frontend Setup
 
+1. **Navigate to client directory:**
 ```bash
-cd ../client
+cd client
+```
+
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+3. **Create environment file:**
+```bash
 cp .env.example .env.local
 ```
 
-`client/.env.local` MUST contain the backend URL:
-
-```env
+4. **Configure API endpoint (optional):**
+```
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
-**Important:** `VITE_API_BASE_URL` is required. The app will not work without it.
-
-Install and start:
-
+5. **Start the development server:**
 ```bash
-npm install
 npm run dev
 ```
 
-The frontend starts on **http://localhost:5173**.
+The application will run on `http://localhost:5173`
 
----
-
-## Production Deployment
-
-### Backend → Render
-
-1. Create a new **Web Service** on [Render](https://render.com).
-2. Connect your GitHub repository.
-3. Set **Root Directory** to `backend`.
-4. Render auto-detects the `render.yaml` — build and start commands are pre-configured.
-5. In **Environment → Environment Variables**, add:
-
-| Key | Value |
-|---|---|
-| `GROQ_API_KEY` | your Groq API key |
-| `FRONTEND_URL` | `https://study-assistant-468n-murex.vercel.app` |
-| `NODE_ENV` | `production` |
-
-> `PORT` is injected automatically by Render — do not set it manually.
-
-6. Deploy. The health endpoint will be at `https://<your-render-url>/health`.
-
-### Frontend → Vercel
-
-1. Import the repository on [Vercel](https://vercel.com).
-2. Set **Root Directory** to `client`.
-3. Framework preset: **Vite** (auto-detected).
-4. In **Settings → Environment Variables**, add:
-
-| Key | Value |
-|---|---|
-| `VITE_API_BASE_URL` | `https://study-assistant-mg5l.onrender.com/api` |
-
-5. Deploy. Vercel reads `client/vercel.json` to handle SPA routing — all routes rewrite to `index.html` so direct URL access works correctly.
-
----
-
-## Environment Variables Reference
-
-### Backend (`backend/.env`)
-
-| Variable | Required | Description |
-|---|---|---|
-| `GROQ_API_KEY` | ✅ | Groq API key for AI generation |
-| `FRONTEND_URL` | ✅ | Comma-separated list of allowed frontend origins |
-| `PORT` | auto | Injected by Render in production; defaults to 5000 locally |
-| `NODE_ENV` | recommended | Set to `production` on Render |
-
-### Frontend (`client/.env.local`)
-
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_API_BASE_URL` | ✅ | Full backend API base URL including `/api` suffix |
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Health check — returns status and CORS config |
-| `POST` | `/api/generate` | Generate a complete study plan from topic/notes |
-| `POST` | `/api/upload` | Parse a PDF, TXT, or MD file into plain text |
-
-### POST `/api/generate`
-
-**Request body:**
-```json
-{
-  "topic": "your study material or topic name",
-  "difficulty": "Easy | Medium | Hard"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "title": "...",
-    "summary": "...",
-    "difficulty": "Medium",
-    "estimatedStudyTime": "2 hours",
-    "keyConcepts": [...],
-    "flashcards": [...],
-    "quiz": [...],
-    "roadmap": [...],
-    "revisionTips": [...],
-    "mnemonics": [...]
-  }
-}
-```
-
-### POST `/api/upload`
-
-**Request:** `multipart/form-data` with field `file` (PDF / TXT / MD, max 15 MB).
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "text": "extracted plain text...",
-    "wordCount": 1234,
-    "charCount": 7890,
-    "fileType": "pdf",
-    "fileName": "notes.pdf",
-    "wasTruncated": false
-  }
-}
-```
-
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-study-assistant/
-├── backend/                  Express + TypeScript API
+study_assistant/
+├── backend/                      # Express server
 │   ├── src/
-│   │   ├── controllers/      Request handlers
-│   │   ├── middleware/       CORS, error handling, rate limiting
-│   │   ├── routes/           Route definitions
-│   │   ├── services/         Groq AI integration
-│   │   ├── utils/            File store utility
-│   │   └── validators/       Zod request validation
-│   ├── .env.example
-│   ├── render.yaml           Render deployment config
-│   └── tsconfig.json
+│   │   ├── controllers/         # Request handlers
+│   │   │   └── studyController.ts
+│   │   ├── middleware/          # Express middleware
+│   │   │   ├── errorHandler.ts
+│   │   │   └── rateLimiter.ts
+│   │   ├── routes/              # API routes
+│   │   │   └── study.ts
+│   │   ├── services/            # Business logic
+│   │   │   └── geminiService.ts  # AI integration
+│   │   ├── server.ts            # Express app setup
+│   │   └── utils/               # Helpers
+│   ├── data/                    # Local data storage
+│   ├── dist/                    # Compiled output
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── render.yaml              # Render deployment config
 │
-└── client/                   React + Vite frontend
-    ├── src/
-    │   ├── components/       UI components
-    │   ├── features/         Feature modules (file upload)
-    │   ├── hooks/            Custom React hooks
-    │   ├── pages/            Route-level page components
-    │   ├── services/         API client layer (Axios)
-    │   ├── types/            TypeScript interfaces
-    │   └── utils/            Helpers (validation, PDF, TTS)
-    ├── .env.example
-    ├── vercel.json           Vercel SPA routing config
-    └── vite.config.ts
+├── client/                       # React application
+│   ├── src/
+│   │   ├── components/          # React components
+│   │   │   ├── animations/      # Animation components
+│   │   │   ├── common/          # Reusable components
+│   │   │   ├── layout/          # Layout components
+│   │   │   ├── Flashcards/      # Flashcard UI
+│   │   │   ├── KeyConcepts/     # Concepts display
+│   │   │   ├── Mnemonics/       # Memory aids
+│   │   │   ├── Quiz/            # Quiz interface
+│   │   │   ├── Roadmap/         # Learning paths
+│   │   │   ├── RevisionTips/    # Study tips
+│   │   │   └── Summary/         # Content summary
+│   │   ├── hooks/               # Custom React hooks
+│   │   │   ├── useGenerateStudyPlan.ts
+│   │   │   ├── useSettings.ts
+│   │   │   └── useCancelOnNavigate.ts
+│   │   ├── pages/               # Page components
+│   │   │   ├── Home.tsx         # Landing/generation page
+│   │   │   ├── SessionPage.tsx  # Study session view
+│   │   │   ├── DashboardPage.tsx
+│   │   │   └── HistoryPage.tsx
+│   │   ├── services/            # API client
+│   │   │   └── api.ts
+│   │   ├── types/               # TypeScript interfaces
+│   │   │   └── index.ts
+│   │   ├── utils/               # Utilities
+│   │   │   ├── errorHandler.ts
+│   │   │   └── jsonValidator.ts
+│   │   ├── contexts/            # React contexts
+│   │   ├── App.tsx              # Main app component
+│   │   └── main.tsx
+│   ├── public/                  # Static assets
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tailwind.config.js
+│
+├── .git/
+├── .gitignore
+└── README.md
 ```
 
----
+## 🤖 AI Provider & Architecture
 
-## Build Verification
+### Google Gemini Integration
 
-Both projects build with zero TypeScript errors:
+StudyFlow uses **Google Generative AI (Gemini 2.5 Flash)** for intelligent content generation.
+
+**Why Gemini?**
+- Fast response times (ideal for user experience)
+- Structured JSON output with `responseMimeType: "application/json"`
+- Cost-effective for educational use
+- Supports large context windows (up to 1M tokens)
+- Excellent for multi-turn conversations
+
+### Backend AI Architecture
+
+The backend implements a robust multi-layer validation approach:
+
+1. **Request Validation** (Zod Schema)
+   - Topic length validation (max 5MB)
+   - Difficulty level enum validation
+   - Request body type checking
+
+2. **Gemini Service** (`geminiService.ts`)
+   - Chunk-based text processing for large inputs
+   - Retry logic with exponential backoff (max 3 retries)
+   - Request timeout: 120 seconds
+   - Automatic JSON extraction and parsing
+   - Self-healing response validation
+
+3. **JSON Recovery**
+   - Handles markdown code blocks
+   - Fixes trailing commas and unquoted properties
+   - Extracts partial JSON from malformed responses
+   - Attempts multiple parsing strategies
+
+4. **Schema Validation** (Zod)
+   ```typescript
+   - title: string (1-200 chars)
+   - summary: string (100+ chars)
+   - difficulty: "Easy" | "Medium" | "Hard"
+   - keyConcepts: array of {concept, explanation}
+   - flashcards: array of {front, back}
+   - quiz: array of {question, options, answerIndex, explanation}
+   - roadmap: array of phases with tasks
+   - revisionTips: array of tips
+   - mnemonics: array of memory aids
+   ```
+
+### Frontend AI Handling
+
+The frontend implements sophisticated request lifecycle management:
+
+1. **Request Sequencing** - Prevent stale response overwrites
+2. **Automatic Cancellation** - Cancel on navigation, unmount, or new request
+3. **Client-side Validation** - Defense-in-depth validation layer
+4. **Timeout Management** - User-friendly timeout messages with retry
+5. **Error Recovery** - Graceful degradation with fallback values
+
+## 🔒 Security
+
+### Environment Variables
+- `GEMINI_API_KEY` stored in `.env` (never committed to git)
+- `.env` files included in `.gitignore`
+- Use `.env.example` as template
+
+### Data Privacy
+- No user data sent to third parties (except Gemini API)
+- Study sessions stored locally in browser (localStorage)
+- Optional privacy mode to disable history saving
+- No analytics/tracking by default
+
+### API Security
+- Request validation on all endpoints
+- Rate limiting middleware
+- CORS configuration
+- Input sanitization
+
+## 📊 Study Plan JSON Structure
+
+```json
+{
+  "title": "Study material title",
+  "summary": "Comprehensive summary with sections...",
+  "difficulty": "Medium",
+  "estimatedStudyTime": "2-3 hours",
+  "keyConcepts": [
+    {
+      "concept": "Concept name",
+      "explanation": "Detailed explanation..."
+    }
+  ],
+  "flashcards": [
+    {
+      "front": "Question",
+      "back": "Answer"
+    }
+  ],
+  "quiz": [
+    {
+      "question": "Question text",
+      "options": ["A", "B", "C", "D"],
+      "answerIndex": 0,
+      "explanation": "Why this is correct..."
+    }
+  ],
+  "roadmap": [
+    {
+      "phase": "Phase name",
+      "tasks": [
+        {
+          "id": "task-1",
+          "task": "Task name",
+          "description": "Task details"
+        }
+      ]
+    }
+  ],
+  "revisionTips": [
+    {
+      "id": "tip-1",
+      "text": "Study tip..."
+    }
+  ],
+  "mnemonics": [
+    {
+      "concept": "Term",
+      "phrase": "Memory device..."
+    }
+  ]
+}
+```
+
+## 🚀 Deployment
+
+### Render Deployment (Backend)
+
+The backend is configured for Render with `render.yaml`:
+
+1. Connect GitHub repository to Render
+2. Set environment variables in Render dashboard
+3. Deploy automatically on push to main branch
+
+### Frontend Deployment
+
+Deploy to Vercel, Netlify, or any static host:
 
 ```bash
-# Backend
-cd backend && npm run build   # tsc — compiles to dist/
-
-# Frontend
-cd client && npm run build    # tsc -b && vite build — outputs to dist/
+cd client
+npm run build
+# Upload dist/ folder to hosting platform
 ```
 
+## 📈 Performance Features
+
+### Race Condition Prevention
+- Request sequence tracking prevents newer responses from being overwritten
+- `isResponseStale()` checks before updating UI
+- Automatic request cancellation on new submissions
+
+### Request Lifecycle
+1. User submits → Generate new sequence number
+2. Fetch starts → Previous requests cancelled
+3. Response arrives → Check if stale
+4. If stale → Discard silently
+5. If fresh → Update UI and navigation
+
+### Timeout Handling
+- 120-second request timeout
+- Graceful degradation with retry option
+- Exponential backoff for retries (1s, 2s, 4s)
+- No UI freezing during long operations
+
+### Error Recovery
+- Network offline detection
+- Automatic retry for transient errors
+- User-friendly error messages
+- Preserve form data during errors
+
+## 📝 Usage Examples
+
+### Generate a Study Plan
+
+1. Navigate to home page
+2. Enter topic or paste notes
+3. Select difficulty level (Easy/Medium/Hard)
+4. Click "Generate Study Plan"
+5. Review and interact with materials
+
+### Study Workflow
+
+1. **Review Summary** - Get an overview
+2. **Learn Concepts** - Understand key ideas
+3. **Practice Flashcards** - Test recall
+4. **Take Quiz** - Assess understanding
+5. **Follow Roadmap** - Track progress
+6. **Memorize Mnemonics** - Lock in learning
+
+## 🐛 Known Limitations
+
+1. **API Rate Limits** - Gemini API has usage limits (check Google documentation)
+2. **Text-Only Input** - Currently doesn't support document uploads (implementation ready)
+3. **No Offline Mode** - Requires internet connection for AI generation
+4. **Local Storage Only** - No cloud sync (can be added with backend database)
+5. **Single User** - Multi-user support requires authentication system
+
+## 🎓 AI Usage Note
+
+This application was developed with AI assistance from Claude AI for:
+- Code architecture and structure
+- React component patterns
+- TypeScript type definitions
+- Error handling strategies
+- UI/UX implementation
+- Documentation writing
+
+Core business logic, data structures, and deployment configuration were designed to be maintainable and production-ready.
+
+## ⏱️ Development Time
+
+**Approximate time spent:** 40-50 hours
+
+- Frontend UI/UX design & implementation: 20 hours
+- Backend API & AI integration: 15 hours
+- Error handling & reliability features: 10 hours
+- Testing, documentation & deployment: 5-10 hours
+
+## 🤝 Contributing
+
+Contributions welcome! Areas for improvement:
+- Multi-language support
+- Document upload functionality
+- Custom AI model selection
+- Advanced analytics dashboard
+- Social sharing features
+
+## 📄 License
+
+MIT License - Feel free to use and modify
+
+## 💬 Support
+
+For issues or questions:
+1. Check existing GitHub issues
+2. Review error messages (usually informative)
+3. Check console logs for debugging info
+4. Verify `.env` variables are set correctly
+
+## 🌟 Future Roadmap
+
+- [ ] Document/PDF upload support
+- [ ] Collaborative study sessions
+- [ ] Speech-to-text input
+- [ ] Custom AI model selection
+- [ ] Study groups feature
+- [ ] Achievement badges system
+- [ ] Mobile native app
+- [ ] Offline study materials
+
 ---
 
-## CORS Configuration
-
-The backend allows requests from:
-
-- `http://localhost:5173` (Vite dev server)
-- `http://localhost:3000` (alternative local port)
-- `http://localhost:4173` (Vite preview)
-- Any origin matching `*.vercel.app` (covers all Vercel preview deployments)
-- Any origin listed in the `FRONTEND_URL` environment variable
-
----
-
-## Known Limitations
-
-- **Render free tier cold starts** — the backend may take 30–60 seconds to respond after a period of inactivity. The frontend has a 90-second request timeout to accommodate this.
-- **Rate limiting** — the `/api/generate` endpoint is limited to 20 requests per IP per hour to protect Groq API quota.
-- **File uploads** — files are processed in memory and not persisted. Maximum size is 15 MB.
-- **No authentication** — the application is guest-only. All data is stored in the browser's `localStorage`.
+**StudyFlow** - Making learning smarter, one study plan at a time. 📚✨

@@ -2,13 +2,114 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Cognify — Transform notes into structured study plans with AI-powered flashcards, quizzes, and roadmaps." />
-    <title>Cognify — AI Study Platform</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="description" content="AI Study Assistant: Convert notes and topics into comprehensive, structured learning pathways including summaries, roadmap timelines, flashcards, and quizzes." />
+    <title>AI Study Assistant - Structured GenAI Learning Platform</title>
+    <style>
+      :root {
+        --accent-primary: #2563EB;
+        --accent-secondary: #1D4ED8;
+        --accent-light: #BFDBFE;
+        --accent-lighter: #EFF6FF;
+      }
+
+      /* Reduced motion mode */
+      html.reduce-motion * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      html.reduce-motion [data-motion],
+      html.reduce-motion .motion-element {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      /* Large text mode */
+      html.large-text {
+        font-size: 1.125em;
+      }
+
+      html.large-text h1 {
+        font-size: 2.5rem;
+      }
+
+      html.large-text h2 {
+        font-size: 1.875rem;
+      }
+
+      html.large-text h3 {
+        font-size: 1.5rem;
+      }
+
+      html.large-text h4 {
+        font-size: 1.25rem;
+      }
+
+      /* High contrast mode */
+      html.high-contrast {
+        --text-primary: #000;
+        --text-secondary: #000;
+        --bg-primary: #fff;
+        --bg-secondary: #f0f0f0;
+      }
+
+      html.high-contrast body {
+        background-color: #ffffff;
+        color: #000000;
+      }
+
+      html.high-contrast * {
+        border-color: #000000;
+      }
+
+      html.high-contrast .dark {
+        background-color: #000000;
+        color: #ffffff;
+      }
+
+      html.high-contrast button,
+      html.high-contrast a {
+        outline-width: 3px;
+        outline-color: #000000;
+      }
+
+      /* Keyboard navigation enhancements */
+      html.keyboard-nav :focus-visible {
+        outline: 3px solid var(--accent-primary);
+        outline-offset: 2px;
+      }
+
+      html.keyboard-nav a:focus-visible,
+      html.keyboard-nav button:focus-visible,
+      html.keyboard-nav input:focus-visible,
+      html.keyboard-nav select:focus-visible,
+      html.keyboard-nav textarea:focus-visible {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5);
+      }
+
+      /* Dark mode */
+      @media (prefers-color-scheme: dark) {
+        html:not(.light) {
+          color-scheme: dark;
+        }
+      }
+
+      html.dark {
+        color-scheme: dark;
+      }
+
+      html.dark body {
+        background-color: #0f172a;
+        color: #f1f5f9;
+      }
+    </style>
   </head>
-  <body>
+  <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

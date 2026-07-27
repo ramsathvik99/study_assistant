@@ -1,28 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  StudySession, StudyPlan, Flashcard, QuizQuestion,
-  RoadmapPhase, RevisionTip, Mnemonic
-} from "../types/index.js";
-import { printStudyPlan } from "../utils/pdfGenerator.js";
-import { Button } from "../components/common/Button.js";
-import { SummaryCard }      from "../components/Summary/SummaryCard.js";
-import { ConceptCard }      from "../components/KeyConcepts/ConceptCard.js";
-import { FlashcardContainer } from "../components/Flashcards/FlashcardContainer.js";
-import { QuizContainer }    from "../components/Quiz/QuizContainer.js";
-import { RoadmapTimeline }  from "../components/Roadmap/RoadmapTimeline.js";
-import { TipsPanel }        from "../components/RevisionTips/TipsPanel.js";
-import { MnemonicsGrid }    from "../components/Mnemonics/MnemonicsGrid.js";
-import { DeveloperPanel }   from "../components/common/DeveloperPanel.js";
-import { useSettings }      from "../hooks/useSettings.js";
-import {
-  FileText, Lightbulb, CreditCard, HelpCircle,
-  Map, ClipboardList, Brain, Printer, Star,
-  ChevronLeft, Clock, CheckCircle2
-} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import {
+  FileText,
+  Lightbulb,
+  BookOpen,
+  Award,
+  Map,
+  ListChecks,
+  Brain,
+  Star,
+  Printer,
+  ChevronLeft,
+  Clock,
+} from "lucide-react";
+import { StudySession } from "../types/index";
+import { PageContainer, PageHeader } from "../components/layout/PageContainer";
+import { Button } from "../components/common/Button";
+import { SummaryCard } from "../components/Summary/SummaryCard";
+import { ConceptCard } from "../components/KeyConcepts/ConceptCard";
+import { FlashcardContainer } from "../components/Flashcards/FlashcardContainer";
+import { QuizContainer } from "../components/Quiz/QuizContainer";
+import { RoadmapTimeline } from "../components/Roadmap/RoadmapTimeline";
+import { TipsPanel } from "../components/RevisionTips/TipsPanel";
+import { MnemonicsGrid } from "../components/Mnemonics/MnemonicsGrid";
+import { EmptyState } from "../components/animations/EmptyState";
+import { DeveloperPanel } from "../components/common/DeveloperPanel";
+import { useSettings } from "../hooks/useSettings";
+import { printStudyPlan } from "../utils/pdfGenerator";
 
 interface SessionPageProps {
   activeSession: StudySession | null;
@@ -30,27 +35,24 @@ interface SessionPageProps {
   onToggleBookmark: (id: string) => void;
 }
 
-type TabId = "summary" | "concepts" | "flashcards" | "quiz" | "roadmap" | "tips" | "mnemonics";
+type TabType = "summary" | "concepts" | "flashcards" | "quiz" | "roadmap" | "tips" | "mnemonics";
 
-// ─── Tab definitions ──────────────────────────────────────────────────────────
+interface Tab {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
 
-const TABS: Array<{ id: TabId; label: string; icon: React.ElementType; shortLabel: string }> = [
-  { id: "summary",    label: "Summary",       shortLabel: "Summary",   icon: FileText     },
-  { id: "concepts",   label: "Key Concepts",  shortLabel: "Concepts",  icon: Lightbulb    },
-  { id: "flashcards", label: "Flashcards",    shortLabel: "Cards",     icon: CreditCard   },
-  { id: "quiz",       label: "Quiz",          shortLabel: "Quiz",      icon: HelpCircle   },
-  { id: "roadmap",    label: "Roadmap",       shortLabel: "Roadmap",   icon: Map          },
-  { id: "tips",       label: "Revision Tips", shortLabel: "Tips",      icon: ClipboardList},
-  { id: "mnemonics",  label: "Mnemonics",     shortLabel: "Memory",    icon: Brain        },
+const TABS: Tab[] = [
+  { id: "summary", label: "Summary", icon: FileText, color: "primary" },
+  { id: "concepts", label: "Concepts", icon: Lightbulb, color: "emerald" },
+  { id: "flashcards", label: "Flashcards", icon: BookOpen, color: "purple" },
+  { id: "quiz", label: "Quiz", icon: Award, color: "accent" },
+  { id: "roadmap", label: "Roadmap", icon: Map, color: "indigo" },
+  { id: "tips", label: "Tips", icon: ListChecks, color: "pink" },
+  { id: "mnemonics", label: "Mnemonics", icon: Brain, color: "secondary" },
 ];
-
-const DIFF_BADGE: Record<string, string> = {
-  Easy:   "badge-jade",
-  Medium: "badge-amber",
-  Hard:   "badge-rose",
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export const SessionPage: React.FC<SessionPageProps> = ({
   activeSession,
@@ -59,210 +61,244 @@ export const SessionPage: React.FC<SessionPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const [activeTab, setActiveTab]     = useState<TabId>("summary");
-  const [savedFlash, setSavedFlash]   = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("summary");
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false);
 
   useEffect(() => {
-    if (!activeSession) navigate("/");
+    if (!activeSession) {
+      navigate("/");
+    }
   }, [activeSession, navigate]);
 
   if (!activeSession) return null;
 
   const { studyPlan, topic, isBookmarked } = activeSession;
 
-  // ── Autosave flash ──
-  const triggerSaveFlash = () => {
-    setSavedFlash(true);
-    setTimeout(() => setSavedFlash(false), 1800);
+  const triggerSaveIndicator = () => {
+    setShowSaveIndicator(true);
+    setTimeout(() => setShowSaveIndicator(false), 2000);
   };
 
-  // ── Update a single plan section and persist ──
-  const updateSection = (key: keyof StudyPlan, value: unknown) => {
-    const updatedPlan    = { ...studyPlan, [key]: value };
-    const updatedSession = { ...activeSession, studyPlan: updatedPlan };
-    onUpdateSession(updatedSession);
-    triggerSaveFlash();
+  const updatePlan = <K extends keyof typeof studyPlan>(key: K, value: typeof studyPlan[K]) => {
+    const updated = { ...activeSession, studyPlan: { ...studyPlan, [key]: value } };
+    onUpdateSession(updated);
+    triggerSaveIndicator();
+  };
+
+  const handlePrint = () => {
+    printStudyPlan(studyPlan);
+  };
+
+  const currentTab = TABS.find((t) => t.id === activeTab)!;
+  const Icon = currentTab.icon;
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "Easy":
+        return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700";
+      case "Medium":
+        return "bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 border-accent-200 dark:border-accent-700";
+      case "Hard":
+        return "bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 border-error-200 dark:border-error-700";
+      default:
+        return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700";
+    }
   };
 
   return (
-    <div className="min-h-[calc(100dvh-48px)] flex flex-col">
-      {/* ── Session header ───────────────────────────────────────────── */}
-      <div className="border-b border-[rgba(255,255,255,0.07)] bg-void-950/80 backdrop-blur sticky top-12 z-20">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+    <PageContainer>
+      {/* Page Header */}
+      <div className="mb-6 sm:mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-2 px-3 py-2 text-small font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all mb-3 sm:mb-4 min-h-[44px] touch-manipulation"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Back to Home</span>
+          <span className="sm:hidden">Back</span>
+        </button>
 
-            {/* Left: breadcrumb + title */}
-            <div className="space-y-2 min-w-0">
-              <button
-                onClick={() => navigate("/")}
-                className="flex items-center gap-1.5 text-xs text-void-500 hover:text-void-200 transition-colors focus-ring rounded"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                New session
-              </button>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="font-display text-xl sm:text-2xl font-bold text-void-50 leading-tight truncate">
-                  {studyPlan.title}
-                </h1>
-                <span className={DIFF_BADGE[studyPlan.difficulty] ?? "badge-amber"}>
-                  {studyPlan.difficulty}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-4 text-xs text-void-500">
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  {studyPlan.estimatedStudyTime}
-                </span>
-                <span className="hidden sm:block truncate max-w-xs opacity-60">
-                  "{topic}"
-                </span>
-              </div>
-            </div>
-
-            {/* Right: toolbar */}
-            <div className="flex items-center gap-2 shrink-0">
-              <AnimatePresence>
-                {savedFlash && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="flex items-center gap-1.5 text-xs text-jade-400 px-3 py-1.5 rounded-lg bg-jade-500/10 border border-jade-500/20"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Saved
-                  </motion.span>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={() => onToggleBookmark(activeSession.id)}
-                title="Bookmark session"
-                className={[
-                  "w-8 h-8 flex items-center justify-center rounded-lg border transition-all focus-ring",
-                  isBookmarked
-                    ? "bg-amber-500/12 border-amber-500/30 text-amber-400"
-                    : "border-[rgba(255,255,255,0.08)] text-void-500 hover:text-void-200 hover:bg-white/5",
-                ].join(" ")}
-              >
-                <Star className={`w-4 h-4 ${isBookmarked ? "fill-amber-400" : ""}`} />
-              </button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<Printer className="w-3.5 h-3.5" />}
-                onClick={() => printStudyPlan(studyPlan)}
-              >
-                Print
-              </Button>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-h1 font-display text-slate-900 dark:text-white mb-2">
+              {studyPlan.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-bold border ${getDifficultyColor(studyPlan.difficulty)}`}>
+                {studyPlan.difficulty}
+              </span>
+              <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg text-[10px] sm:text-xs font-bold text-primary-700 dark:text-primary-300">
+                <Clock className="w-3 h-3" />
+                {studyPlan.estimatedStudyTime}
+              </span>
             </div>
           </div>
 
-          {/* ── Tab bar ────────────────────────────────────────────────── */}
-          <div className="mt-4 flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {TABS.map((tab) => {
-              const Icon     = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={[
-                    "flex items-center gap-2 px-3.5 py-2 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all focus-ring shrink-0",
-                    isActive
-                      ? "bg-amber-500/12 text-amber-400 border border-amber-500/25"
-                      : "text-void-500 hover:text-void-200 hover:bg-white/5 border border-transparent",
-                  ].join(" ")}
+          <div className="flex items-center gap-2 shrink-0">
+            <AnimatePresence>
+              {showSaveIndicator && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-lg text-[10px] sm:text-xs font-bold"
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-void-600"}`} />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.shortLabel}</span>
-                </button>
-              );
-            })}
+                  ✓ Saved
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => onToggleBookmark(activeSession.id)}
+              icon={
+                <Star
+                  className={`w-4 h-4 ${
+                    isBookmarked ? "fill-accent-500 text-accent-500" : "text-slate-400"
+                  }`}
+                />
+              }
+              className="hidden sm:flex"
+            >
+              {isBookmarked ? "Saved" : "Save"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => onToggleBookmark(activeSession.id)}
+              icon={
+                <Star
+                  className={`w-4 h-4 ${
+                    isBookmarked ? "fill-accent-500 text-accent-500" : "text-slate-400"
+                  }`}
+                />
+              }
+              className="sm:hidden"
+            >
+              <span className="sr-only">{isBookmarked ? "Saved" : "Save"}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handlePrint}
+              icon={<Printer className="w-4 h-4" />}
+              className="hidden sm:flex"
+            >
+              Export
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handlePrint}
+              icon={<Printer className="w-4 h-4" />}
+              className="sm:hidden"
+            >
+              <span className="sr-only">Export</span>
+            </Button>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-none -mx-4 sm:mx-0 px-4 sm:px-0">
+          {TABS.map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap border min-h-[44px] touch-manipulation ${
+                  isActive
+                    ? `bg-${tab.color}-50 dark:bg-${tab.color}-900/30 border-${tab.color}-200 dark:border-${tab.color}-700 text-${tab.color}-700 dark:text-${tab.color}-300`
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <TabIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.slice(0, 4)}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Tab content ──────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-8">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={activeTab}
-            initial={settings.animationsEnabled ? { opacity: 0, y: 10 } : { opacity: 1 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: settings.animationsEnabled ? 0 : 1 }}
-            transition={settings.animationsEnabled
-              ? { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 0 }}
-          >
-            {activeTab === "summary" && (
-              <SummaryCard
-                summary={studyPlan.summary}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "concepts" && (
-              <ConceptCard
-                concepts={studyPlan.keyConcepts}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "flashcards" && (
-              <FlashcardContainer
-                flashcards={studyPlan.flashcards}
-                topicTitle={studyPlan.title}
-                onUpdateFlashcards={(u) => updateSection("flashcards", u)}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "quiz" && (
-              <QuizContainer
-                quiz={studyPlan.quiz}
-                topicTitle={studyPlan.title}
-                onUpdateQuiz={(u) => updateSection("quiz", u)}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "roadmap" && (
-              <RoadmapTimeline
-                roadmap={studyPlan.roadmap}
-                onUpdateRoadmap={(u) => updateSection("roadmap", u)}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "tips" && (
-              <TipsPanel
-                tips={studyPlan.revisionTips}
-                onUpdateTips={(u) => updateSection("revisionTips", u)}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-            {activeTab === "mnemonics" && (
-              <MnemonicsGrid
-                mnemonics={studyPlan.mnemonics}
-                onUpdateMnemonics={(u) => updateSection("mnemonics", u)}
-                animationsEnabled={settings.animationsEnabled}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+      {/* Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === "summary" && (
+            <SummaryCard summary={studyPlan.summary} title={studyPlan.title} />
+          )}
 
-        {/* Developer panel */}
-        {settings.developerMode && activeSession.rawJson && (
-          <div className="mt-10">
-            <DeveloperPanel
-              rawJson={activeSession.rawJson}
-              metadata={activeSession.debugMetadata}
-              studyPlan={studyPlan}
-              animationsEnabled={settings.animationsEnabled}
+          {activeTab === "concepts" && (
+            <div className="space-y-3">
+              {studyPlan.keyConcepts && studyPlan.keyConcepts.length > 0 ? (
+                studyPlan.keyConcepts.map((concept, index) => (
+                  <ConceptCard key={index} concept={concept} index={index} />
+                ))
+              ) : (
+                <EmptyState
+                  type="session"
+                  title="No concepts available"
+                  description="No key concepts are available for this study plan."
+                />
+              )}
+            </div>
+          )}
+
+          {activeTab === "flashcards" && (
+            <FlashcardContainer
+              flashcards={studyPlan.flashcards}
+              onUpdate={(updated) => updatePlan("flashcards", updated)}
             />
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+
+          {activeTab === "quiz" && (
+            <QuizContainer
+              questions={studyPlan.quiz}
+              onUpdate={(updated) => updatePlan("quiz", updated)}
+            />
+          )}
+
+          {activeTab === "roadmap" && (
+            <RoadmapTimeline
+              roadmap={studyPlan.roadmap}
+              onUpdate={(updated) => updatePlan("roadmap", updated)}
+            />
+          )}
+
+          {activeTab === "tips" && (
+            <TipsPanel
+              tips={studyPlan.revisionTips}
+              onUpdate={(updated) => updatePlan("revisionTips", updated)}
+            />
+          )}
+
+          {activeTab === "mnemonics" && (
+            <MnemonicsGrid
+              mnemonics={studyPlan.mnemonics}
+              onUpdate={(updated) => updatePlan("mnemonics", updated)}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Developer Panel */}
+      {settings.developerMode && (
+        <div className="mt-8">
+          <DeveloperPanel />
+        </div>
+      )}
+    </PageContainer>
   );
 };
 
