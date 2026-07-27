@@ -86,9 +86,13 @@ export const Home: React.FC<HomeProps> = ({ onStartSession }) => {
 
   const { mutate: generate, isPending: isLoading } = useGenerateStudyPlan({
     onSuccess: (session) => {
+      console.log("[Home] onSuccess called with session:", session);
+      console.log("[Home] Session study plan keys:", Object.keys(session.studyPlan));
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 100);
+      console.log("[Home] Calling onStartSession");
       onStartSession(session);
+      console.log("[Home] onStartSession completed");
     },
     onError: (error) => {
       setErrorInfo(error);

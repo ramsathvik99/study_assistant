@@ -54,6 +54,53 @@ export function getErrorInfo(error: any): ErrorInfo {
     };
   }
 
+  // Handle axios errors with custom error messages (check this BEFORE status codes)
+  if (error.response?.data?.error?.message) {
+    const errorMsg = error.response.data.error.message;
+    
+    // Check for specific error patterns
+    if (errorMsg.includes('quota') || errorMsg.includes('exceeded') || errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+      return {
+        title: '⚠️ API Quota Exceeded',
+        message: 'The AI service has reached its daily usage limit. Please wait for the quota to reset (typically daily) or create a new API key.',
+        icon: 'warning',
+        action: 'retry',
+        errorCode: 'quota_exceeded',
+      };
+    }
+
+    if (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID')) {
+      return {
+        title: '🔑 Invalid API Key',
+        message: 'The API key is invalid. Please check the backend configuration.',
+        icon: 'error',
+        action: 'close',
+        errorCode: 'invalid_api_key',
+      };
+    }
+
+    if (errorMsg.includes('timeout')) {
+      return {
+        title: '⏱️ Request Timeout',
+        message: 'The AI is taking longer than expected. Please try again.',
+        icon: 'warning',
+        action: 'retry',
+        isTimeout: true,
+        errorCode: 'timeout',
+      };
+    }
+
+    if (errorMsg.includes('malformed') || errorMsg.includes('unexpected')) {
+      return {
+        title: '🔄 Invalid Response',
+        message: 'The AI returned an unexpected response. Please try generating the content again.',
+        icon: 'error',
+        action: 'retry',
+        errorCode: 'malformed',
+      };
+    }
+  }
+
   // Handle 429 Rate Limit / Quota Exceeded
   if (error.response?.status === 429 || error.message?.includes('429')) {
     return {
@@ -130,43 +177,6 @@ export function getErrorInfo(error: any): ErrorInfo {
       action: 'retry',
       errorCode: 'bad_request',
     };
-  }
-
-  // Handle axios errors with custom error messages
-  if (error.response?.data?.error?.message) {
-    const errorMsg = error.response.data.error.message;
-    
-    // Check for specific error patterns
-    if (errorMsg.includes('quota') || errorMsg.includes('exceeded') || errorMsg.includes('rate limit')) {
-      return {
-        title: '⚠️ Rate Limited',
-        message: 'The AI service has reached its current usage limit. Please wait a moment and try again.',
-        icon: 'warning',
-        action: 'retry',
-        errorCode: 'quota_exceeded',
-      };
-    }
-
-    if (errorMsg.includes('timeout')) {
-      return {
-        title: '⏱️ Request Timeout',
-        message: 'The AI is taking longer than expected. Please try again.',
-        icon: 'warning',
-        action: 'retry',
-        isTimeout: true,
-        errorCode: 'timeout',
-      };
-    }
-
-    if (errorMsg.includes('malformed') || errorMsg.includes('unexpected')) {
-      return {
-        title: '🔄 Invalid Response',
-        message: 'The AI returned an unexpected response. Please try generating the content again.',
-        icon: 'error',
-        action: 'retry',
-        errorCode: 'malformed',
-      };
-    }
   }
 
   // Handle cancelled requests silently

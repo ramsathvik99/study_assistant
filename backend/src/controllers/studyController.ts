@@ -61,10 +61,15 @@ export async function createStudyPlan(
       defaultOutputSections,
     });
 
-    res.status(200).json({
+    const response = {
       success: true,
       data: studyPlan,
-    });
+    };
+
+    console.log("[studyController] ===== RESPONSE SENT TO FRONTEND =====");
+    console.log(JSON.stringify(response, null, 2));
+
+    res.status(200).json(response);
   } catch (error: any) {
     const message: string = error?.message ?? "An unexpected error occurred.";
     const status: number = error?.status ?? error?.statusCode ?? 500;

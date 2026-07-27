@@ -112,12 +112,19 @@ export async function fetchStudyPlan(options: GenerateOptions, requestSequence?:
       { cancelToken: cancelSource.token }
     );
 
+    console.log("[api.ts] ===== RAW HTTP RESPONSE =====");
+    console.log("[api.ts] Raw API response:", response);
+    console.log("[api.ts] Response data:", response.data);
+
     const result = response.data;
 
     if (!result.success || !result.data) {
       const errorMsg = result?.error?.message || "AI returned an unexpected response structure.";
+      console.error("[api.ts] Validation failed:", { success: result.success, hasData: !!result.data, errorMsg });
       throw new ApiError(errorMsg, 502, true);
     }
+
+    console.log("[api.ts] Parsed study plan data:", result.data);
 
     // 4. Client-side schema validation (never trust AI output)
     const studyPlan = validateStudyPlan(result.data);
@@ -148,13 +155,42 @@ export async function fetchStudyPlan(options: GenerateOptions, requestSequence?:
       );
     }
 
-    // Axios Error mapping
+    // Axios Error mapping - distinguish between different error types
     const axiosErr = error as AxiosError<any>;
     if (axiosErr.response) {
       const status = axiosErr.response.status;
       const data = axiosErr.response.data;
       const msg = data?.error?.message ?? `Request failed (HTTP ${status})`;
 
+      // Check for specific error patterns in the message
+      if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID")) {
+        throw new ApiError(
+          "Invalid API key. Please check your backend configuration.",
+          401,
+          false
+        );
+      }
+      if (msg.includes("quota") || msg.includes("429") || msg.includes("Too Many Requests")) {
+        throw new ApiError(
+          "API quota exceeded. Please wait a moment before trying again.",
+          429,
+          true
+        );
+      }
+      if (msg.includes("model not found") || msg.includes("Model not found")) {
+        throw new ApiError(
+          "AI model not found. Please check your backend configuration.",
+          404,
+          false
+        );
+      }
+      if (msg.includes("permission denied") || msg.includes("Permission denied")) {
+        throw new ApiError(
+          "Permission denied. Please check your API key permissions.",
+          403,
+          false
+        );
+      }
       if (status === 429) {
         throw new ApiError(
           "You're generating too quickly. Please wait a moment before trying again.",

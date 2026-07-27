@@ -64,13 +64,21 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>("summary");
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
 
+  console.log("[SessionPage] Rendered with activeSession:", activeSession);
+  console.log("[SessionPage] activeSession keys:", activeSession ? Object.keys(activeSession) : "null");
+
   useEffect(() => {
+    console.log("[SessionPage] useEffect - activeSession:", activeSession);
     if (!activeSession) {
+      console.log("[SessionPage] No activeSession, navigating to /");
       navigate("/");
     }
   }, [activeSession, navigate]);
 
-  if (!activeSession) return null;
+  if (!activeSession) {
+    console.log("[SessionPage] Returning null because activeSession is null");
+    return null;
+  }
 
   const { studyPlan, topic, isBookmarked } = activeSession;
 

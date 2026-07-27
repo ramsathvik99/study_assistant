@@ -1,10 +1,22 @@
+import dotenv from "dotenv";
+
+// Load environment variables BEFORE any other imports
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import studyRoutes from "./routes/study.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
-dotenv.config();
+// ─── Environment Verification ─────────────────────────────────────────────────────
+console.log(`[Config] ✓ Loaded backend/.env`);
+if (process.env.OPENROUTER_API_KEY) {
+  console.log(`[Config] ✓ OpenRouter API key detected (${process.env.OPENROUTER_API_KEY.substring(0, 10)}...)`);
+} else {
+  console.error(`[Config] ✗ OPENROUTER_API_KEY not set in .env file`);
+}
+console.log(`[Config] ✓ OpenRouter model: ${process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini (default)'}`);
+console.log(`[Config] ✓ Port: ${process.env.PORT || 5000}`);
 
 const app = express();
 const PORT = process.env.PORT || 5000;

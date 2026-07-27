@@ -48,7 +48,7 @@ StudyFlow is a modern, full-stack web application that transforms study material
 ### Backend
 - **Node.js + Express** - Server runtime and framework
 - **TypeScript** - Type-safe backend code
-- **Google Generative AI (Gemini)** - AI model integration
+- **OpenAI SDK (configured for OpenRouter)** - AI model integration
 - **Zod** - Input validation
 - **CORS** - Cross-origin resource sharing
 - **Environment variables** - Secure configuration
@@ -62,7 +62,7 @@ StudyFlow is a modern, full-stack web application that transforms study material
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
-- Google Gemini API key (free at [Google AI Studio](https://aistudio.google.com/))
+- OpenRouter API key (get one at [OpenRouter](https://openrouter.ai/keys))
 
 ### Backend Setup
 
@@ -81,10 +81,10 @@ npm install
 cp .env.example .env
 ```
 
-4. **Add your Gemini API key:**
+4. **Add your OpenRouter API key:**
 ```
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
+OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 5. **Start the backend server:**
@@ -191,16 +191,21 @@ study_assistant/
 
 ## 🤖 AI Provider & Architecture
 
-### Google Gemini Integration
+### OpenRouter Integration
 
-StudyFlow uses **Google Generative AI (Gemini 2.5 Flash)** for intelligent content generation.
+StudyFlow uses **OpenRouter** with the OpenAI SDK for intelligent content generation.
 
-**Why Gemini?**
+**Why OpenRouter?**
+- Access to multiple AI models through a single API
 - Fast response times (ideal for user experience)
-- Structured JSON output with `responseMimeType: "application/json"`
+- Structured JSON output with `response_format: { type: "json_object" }`
 - Cost-effective for educational use
-- Supports large context windows (up to 1M tokens)
-- Excellent for multi-turn conversations
+- Supports large context windows
+- Easy model switching via environment variables
+
+**Default Model:** `openai/gpt-4o-mini`
+
+You can change the model by setting `OPENROUTER_MODEL` in your `.env` file without modifying any code.
 
 ### Backend AI Architecture
 
@@ -211,12 +216,13 @@ The backend implements a robust multi-layer validation approach:
    - Difficulty level enum validation
    - Request body type checking
 
-2. **Gemini Service** (`geminiService.ts`)
+2. **OpenRouter Service** (`geminiService.ts`)
    - Chunk-based text processing for large inputs
    - Retry logic with exponential backoff (max 3 retries)
    - Request timeout: 120 seconds
    - Automatic JSON extraction and parsing
    - Self-healing response validation
+   - Configured via OpenAI SDK with OpenRouter base URL
 
 3. **JSON Recovery**
    - Handles markdown code blocks
@@ -250,12 +256,12 @@ The frontend implements sophisticated request lifecycle management:
 ## 🔒 Security
 
 ### Environment Variables
-- `GEMINI_API_KEY` stored in `.env` (never committed to git)
+- `OPENROUTER_API_KEY` stored in `.env` (never committed to git)
 - `.env` files included in `.gitignore`
 - Use `.env.example` as template
 
 ### Data Privacy
-- No user data sent to third parties (except Gemini API)
+- No user data sent to third parties (except OpenRouter API)
 - Study sessions stored locally in browser (localStorage)
 - Optional privacy mode to disable history saving
 - No analytics/tracking by default
@@ -388,7 +394,7 @@ npm run build
 
 ## 🐛 Known Limitations
 
-1. **API Rate Limits** - Gemini API has usage limits (check Google documentation)
+1. **API Rate Limits** - OpenRouter API has usage limits (check OpenRouter documentation)
 2. **Text-Only Input** - Currently doesn't support document uploads (implementation ready)
 3. **No Offline Mode** - Requires internet connection for AI generation
 4. **Local Storage Only** - No cloud sync (can be added with backend database)

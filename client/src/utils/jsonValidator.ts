@@ -45,6 +45,11 @@ function parseJSONWithRecovery(jsonString: string): any {
  * - Helpful error messages for debugging
  */
 export function validateStudyPlan(data: any): StudyPlan {
+  console.log("[jsonValidator] ===== VALIDATION START =====");
+  console.log("[jsonValidator] Input data:", data);
+  console.log("[jsonValidator] Input data type:", typeof data);
+  console.log("[jsonValidator] Input data keys:", data ? Object.keys(data) : "null/undefined");
+
   if (!data) {
     throw new Error("Invalid response format: Response is null or undefined.");
   }
@@ -223,13 +228,24 @@ export function validateStudyPlan(data: any): StudyPlan {
   });
 
   // Final structural safety check with clear error messages
+  console.log('[jsonValidator] Final safety check:', {
+    keyConcepts: keyConcepts.length,
+    flashcards: flashcards.length,
+    quiz: quiz.length,
+    roadmap: roadmap.length,
+    revisionTips: revisionTips.length,
+  });
+
   if (keyConcepts.length === 0) {
+    console.error('[jsonValidator] ERROR: No key concepts found');
     throw new Error("Invalid study plan: The AI response is missing key concepts. Please try again with a different topic.");
   }
   if (flashcards.length === 0) {
+    console.error('[jsonValidator] ERROR: No flashcards found');
     throw new Error("Invalid study plan: The AI response is missing flashcards. Please try again.");
   }
   if (quiz.length === 0) {
+    console.error('[jsonValidator] ERROR: No quiz questions found');
     throw new Error("Invalid study plan: The AI response is missing quiz questions. Please try again.");
   }
   if (roadmap.length === 0) {
@@ -238,6 +254,9 @@ export function validateStudyPlan(data: any): StudyPlan {
   if (revisionTips.length === 0) {
     console.warn('[jsonValidator] Study plan has no revision tips, using fallback');
   }
+
+  console.log('[jsonValidator] ===== VALIDATION SUCCESS =====');
+  console.log('[jsonValidator] Returning validated study plan');
 
   return {
     title,

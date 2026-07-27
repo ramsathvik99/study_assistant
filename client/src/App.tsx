@@ -61,8 +61,15 @@ export const AppContent: React.FC = () => {
   }, [history]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStartSession = (session: StudySession) => {
-    setHistory((prev) => [session, ...prev]);
+    console.log("[App] handleStartSession called with session:", session);
+    console.log("[App] Session study plan keys:", Object.keys(session.studyPlan));
+    setHistory((prev) => {
+      const newHistory = [session, ...prev];
+      console.log("[App] History updated, length:", newHistory.length);
+      return newHistory;
+    });
     setActiveSession(session);
+    console.log("[App] Active session set");
   };
 
   const handleUpdateSession = (updated: StudySession) => {

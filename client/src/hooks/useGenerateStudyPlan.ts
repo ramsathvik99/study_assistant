@@ -114,11 +114,8 @@ export const useGenerateStudyPlan = ({ onSuccess, onError }: UseGenerateStudyPla
     },
 
     onSuccess: ({ studyPlan, debugMetadata, rawJson }, variables) => {
-      // Only process if component is still mounted and response is not stale
-      if (!isMountedRef.current) {
-        console.log("[useGenerateStudyPlan] Component unmounted, discarding response");
-        return;
-      }
+      console.log("[useGenerateStudyPlan] onSuccess called with studyPlan:", studyPlan);
+      console.log("[useGenerateStudyPlan] Study plan keys:", Object.keys(studyPlan));
 
       // Step 3: Build session and propagate to component
       const session: StudySession = {
@@ -131,10 +128,12 @@ export const useGenerateStudyPlan = ({ onSuccess, onError }: UseGenerateStudyPla
         rawJson,
       };
 
+      console.log("[useGenerateStudyPlan] Calling onSuccess with session:", session);
       onSuccess(session);
 
       const label = session.topic.slice(0, 40);
       toast.success(`Study plan ready: "${label}${session.topic.length > 40 ? "…" : ""}"!`);
+      console.log("[useGenerateStudyPlan] Navigating to /session");
       navigate("/session");
     },
 

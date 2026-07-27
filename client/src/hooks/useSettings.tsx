@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   highContrast: false,
 
   // AI Settings
-  aiModel: "gemini-2.5-flash",
+  aiModel: "gemini-2.0-flash",
   responseLength: "medium",
   temperature: 0.3,
   streamingEnabled: false,

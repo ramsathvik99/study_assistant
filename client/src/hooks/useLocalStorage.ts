@@ -33,9 +33,11 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
     (value: T | ((val: T) => T)) => {
       try {
         const valueToStore = value instanceof Function ? value(storedValue) : value;
+        console.log(`[useLocalStorage] Setting key "${key}":`, valueToStore);
         setStoredValue(valueToStore);
         if (typeof window !== "undefined") {
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          console.log(`[useLocalStorage] Successfully wrote to localStorage key "${key}"`);
         }
       } catch (error) {
         console.warn(`useLocalStorage: failed to write key "${key}":`, error);
