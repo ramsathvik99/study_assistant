@@ -35,6 +35,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5176",
   "http://127.0.0.1:5177",
   "http://127.0.0.1:3000",
+  "https://study-assistant-kw9o.vercel.app/",
 ];
 
 app.use(
